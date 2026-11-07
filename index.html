@@ -101,6 +101,29 @@
   .shopRow span, .achRow span { display:block; color:#b9c0cf; font-size:12px; margin-top:2px; }
   .achRow.got { border-color:#7ee787; background:rgba(40,90,40,.25); }
   .achRow .aIco { font-size:22px; }
+
+  /* ---------- Landscape phones: wide play area, compact HUD, scrollable screens ---------- */
+  @media (orientation: landscape) and (max-height: 560px){
+    /* the game fills the wide landscape screen instead of a portrait column */
+    #gameWrap { left:0; right:0; transform:none; width:100%; height:100%; box-shadow:none; }
+    /* one compact HUD row so it stays thin on a short screen */
+    #hud { flex-wrap:nowrap; gap:6px; padding:calc(4px + env(safe-area-inset-top)) 8px 4px; }
+    .hudBox { padding:3px 7px; font-size:12px; }
+    .hudBox .lbl { font-size:9px; }
+    #hearts { font-size:12px; }
+    .iconBtn { width:32px; height:32px; font-size:16px; }
+    #bossBarWrap { top:calc(46px + env(safe-area-inset-top)); }
+    #powerWrap { height:110px; bottom:70px; }
+    /* screens scroll if taller than the short viewport; menu compacts to fit */
+    .screen { overflow-y:auto; justify-content:flex-start; justify-content:safe center; padding:14px 20px; }
+    .title { font-size:36px; letter-spacing:3px; }
+    .subtitle { font-size:13px; margin:6px 0 14px; letter-spacing:4px; }
+    .btn { padding:10px 16px; font-size:15px; margin:5px auto; }
+    .panel { max-height:88vh; padding:14px; }
+    #levelsGrid { grid-template-columns:repeat(10, 1fr); }
+    .muteNote { margin-top:8px; }
+    .credit { margin-top:2px; }
+  }
 </style>
 </head>
 <body>
@@ -405,15 +428,44 @@ var canvas = document.getElementById('game');
 var ctx = canvas.getContext('2d');
 var W = 0, H = 0, DPR = 1, S = 1, groundY = 0;
 
+function isLandscape(){ return W > H; }
 function resize(){
   var r = canvas.parentElement.getBoundingClientRect();
+  var oldW = W, oldH = H;
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   W = r.width; H = r.height;
   canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   S = Math.max(0.62, Math.min(1.35, H / 800));
   groundY = H * 0.88;
-  if (G.player) { G.player.x = W * 0.14; G.player.y = groundY; }
+  if (oldW > 0 && oldH > 0 && (oldW !== W || oldH !== H)){
+    // Orientation / size change mid-game: rescale the world to the new
+    // viewport instead of resetting. Perches keep their relative spread
+    // across the full width, so enemies spread out in landscape.
+    var sx = W / oldW, sy = H / oldH, i, j, k;
+    for (i=0;i<G.perches.length;i++){
+      var p = G.perches[i];
+      p.x *= sx; p.y *= sy;
+      if (p.kind === 'roof'){ p.w *= sx; p.h = H * 0.16; }
+    }
+    for (j=0;j<G.enemies.length;j++){
+      var e = G.enemies[j];
+      e.baseX = e.perch.x;
+      e.x = e.perch.x; e.y = e.perch.y;
+      e.w = (e.boss ? 44 : 30) * S; e.h = (e.boss ? 104 : 62) * S;
+      e.moveAmp = (e.perch.kind === 'roof' ? Math.max(14*S, (e.perch.w/2 - 18*S)) : 24*S);
+    }
+    if (G.player){ G.player.x = W * 0.14; G.player.y = groundY; G.player.w = 34*S; G.player.h = 74*S; }
+    for (k=0;k<G.arrows.length;k++){ G.arrows[k].x *= sx; G.arrows[k].y *= sy; }
+    for (k=0;k<G.eArrows.length;k++){ G.eArrows[k].x *= sx; G.eArrows[k].y *= sy; }
+    for (k=0;k<G.bombs.length;k++){ G.bombs[k].x *= sx; G.bombs[k].y *= sy; }
+    for (k=0;k<G.clouds.length;k++){ G.clouds[k].x *= sx; G.clouds[k].y *= sy; G.clouds[k].w *= sx; G.clouds[k].h = 26*S; }
+    for (k=0;k<G.fireflies.length;k++){ G.fireflies[k].x *= sx; G.fireflies[k].y *= sy; }
+    for (k=0;k<G.rain.length;k++){ G.rain[k].x *= sx; G.rain[k].y *= sy; }
+    if (G.pickup){ G.pickup.x *= sx; G.pickup.y *= sy; }
+  } else if (G.player) {
+    G.player.x = W * 0.14; G.player.y = groundY;
+  }
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', function(){ setTimeout(resize, 120); });
@@ -1967,7 +2019,8 @@ window.__SA = { G:G, WEAPONS:WEAPONS, save:save, startLevel:startLevel, fireWeap
   renderWeapons:renderWeapons, selectWeapon:selectWeapon, buyWeapon:buyWeapon, weaponOwned:weaponOwned,
   selectedWeapon:selectedWeapon, openWeapons:openWeapons, closeWeapons:closeWeapons,
   getWeaponsReturn:getWeaponsReturn, getCurrentScreen:getCurrentScreen,
-  updateWeaponNameHUD:updateWeaponNameHUD, gameOver:gameOver, enemyDrawState:enemyDrawState };
+  updateWeaponNameHUD:updateWeaponNameHUD, gameOver:gameOver, enemyDrawState:enemyDrawState,
+  resize:resize, isLandscape:isLandscape, getW:function(){ return W; }, getH:function(){ return H; } };
 </script>
 </body>
 </html>
