@@ -23,6 +23,16 @@ down. Kill them all and survive 70 levels.
 - The archer and the enemies are pure-black vector shadow humans — the draw hand grips the red nock of the arrow and pulls it back to the cheek, then snaps forward on release. Enemies draw the same way before they fire.
 - **Headshot = instant kill** (+100). Body hits hurt: 2 hits to kill (+50).
 - Enemies shoot back. Each hit costs 25 HP. 0 HP = game over.
+- **Spawn pacing:** new enemies arrive on a level-paced timer — slowly at
+  first (one group every 3 seconds on levels 1–2), faster as you advance
+  (every 0.42s by level 45), and never faster than every 0.1s from level 51
+  on. The first group of a level still arrives quickly so a level never
+  starts empty. Enemies already on the field keep shooting at you the whole
+  time.
+- **Beat all 70 levels** and a victory popup appears with a **Tweet Your
+  Victory** button — it opens X with your win pre-filled (🏹 SHADOW ARROW:
+  Hunter of Shadows + the link to the deployment you played on), ready for
+  you to post. The popup only appears after level 70.
 - **Ground enemies:** some enemies stand on the ground line right in front
   of you, on the same level as you and facing you — like a duel — in addition
   to the ones up on rooftops and trees. They shoot at you from ground level
