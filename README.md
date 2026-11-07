@@ -16,7 +16,8 @@ rooftops. Kill them all and survive 70 levels.
 
 ## How to play
 
-- **Touch down and drag** — the bow starts facing right, toward the enemies. Drag in the opposite direction to where you want to shoot (drag left to shoot right, drag down from the top right to shoot up right), and the further you pull, the more power. A dotted line shows the trajectory. **Release** to shoot. Arrows fly with real gravity.
+- **Touch down and drag** — the bow starts facing right, toward the enemies. Drag in the opposite direction to where you want to shoot (drag left to shoot right, drag down from the top right to shoot up right), and the further you pull, the more power. A dotted line shows the trajectory (Levels 1–3 only — from Level 4, aim by feel). **Release** to shoot. Arrows fly with real gravity.
+- The archer and the enemies are pure-black vector shadow humans — the draw hand grips the red nock of the arrow and pulls it back to the cheek, then snaps forward on release. Enemies draw the same way before they fire.
 - **Headshot = instant kill** (+100). Body hits hurt: 2 hits to kill (+50).
 - Enemies shoot back. Each hit costs 25 HP. 0 HP = game over.
 - **Wind** bends your arrows — watch the WIND meter. **Bosses** appear every
@@ -28,8 +29,13 @@ rooftops. Kill them all and survive 70 levels.
 - **Pause** with the ⏸️ button in the top bar (the game also pauses itself if
   you switch away). **Mute** with the 🔊 button — the homepage has one too.
 - Spend coins in the **Shop** on health, arrow speed and blast radius
-  upgrades. Unlock **8 weapons** as you level up (or buy them early with
-  coins): Swift, Triple, Flame, Five Burst, Bomb Throw, Explosive and Ice.
+  upgrades. Unlock **10 weapons** as you level up (or buy them early with
+  coins): Swift, Triple, Flame, Five Burst, Bomb Throw, Explosive, Ice,
+  Seeking and Shadow Piercer. Seeking (Level 45) and Shadow Piercer
+  (Level 70) are earned only — they are never for sale, and once unlocked
+  they can be used on any level. Seeking arrows curve toward the nearest
+  enemy; Shadow Piercer arrows pass straight through a line of enemies.
+  The Bomb is thrown overhand, not shot from a bow.
 - Progress, coins, weapons, upgrades, mute setting and achievements save
   automatically in the browser (LocalStorage).
 

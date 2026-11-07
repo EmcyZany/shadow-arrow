@@ -155,7 +155,7 @@
     <button class="btn ghost" id="levelsBtn">LEVELS</button>
     <button class="btn ghost" id="shopBtn">🛒 SHOP — UPGRADES</button>
     <button class="btn ghost" id="achBtn">🏆 ACHIEVEMENTS</button>
-    <div class="muteNote" id="menuHigh">HIGH SCORE: 0 &nbsp;•&nbsp; 70 LEVELS &nbsp;•&nbsp; 8 WEAPONS</div>
+    <div class="muteNote" id="menuHigh">HIGH SCORE: 0 &nbsp;•&nbsp; 70 LEVELS &nbsp;•&nbsp; 10 WEAPONS</div>
     <div class="credit">This game was made by Samuel • Follow the dev on <a href="https://x.com/Samuelcheq1" target="_blank" rel="noopener" aria-label="Samuel on X"><svg class="xLogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></a></div>
     <button class="iconBtn menuMute" id="menuMuteBtn" title="Mute music">🔊</button>
   </div>
@@ -165,12 +165,12 @@
     <div class="panel">
       <h2>HOW TO PLAY</h2>
       <ul>
-        <li><b>Drag back</b> from your bow to pull the arrow. A dotted line shows where it will fly.</li>
+        <li><b>Drag back</b> from your bow to pull the arrow. A dotted line shows where it will fly (Levels 1–3 only — after that, aim by feel).</li>
         <li><b>Release</b> to shoot. Arrows fly with real gravity, so aim a little high.</li>
         <li><b>Headshot = instant kill</b> (+100). Body hits hurt: 2 hits to kill (+50).</li>
         <li>Enemies hide on trees and rooftops and <b>shoot back</b>. Each hit costs you 25 HP.</li>
         <li>Kill every enemy to clear the level. <b>70 levels</b>, faster and deadlier as you climb.</li>
-        <li>Unlock weapons as you level up — or buy them early with coins. 🔥 Flame arrows burn, ❄️ Ice freezes, 💣 Bombs clear groups.</li>
+        <li>Unlock weapons as you level up — or buy them early with coins. 🔥 Flame arrows burn, ❄️ Ice freezes, 💣 Bombs clear groups. 🧲 Seeking curves to the nearest enemy, 🔱 Shadow Piercer passes through a line of them — those two are earned by reaching Level 45 / 70, never for sale.</li>
         <li>Your progress, coins and weapons save automatically on this device.</li>
         <li><b>Wind</b> bends your arrows — watch the WIND meter. <b>Bosses</b> appear every 10 levels. Spend coins in the <b>Shop</b> on health, speed and blast upgrades, and chase achievements.</li>
         <li>From Level 11, a <b>heart ❤️ or shield 🛡️</b> sometimes falls from the sky — shoot it to collect it. Hearts heal +25 HP, shields block one hit.</li>
@@ -267,10 +267,20 @@ var WEAPONS = [
   { id:'flame',    name:'FLAME ARROW',    short:'FLAME',   ico:'🔥', unlock:15, cost:500,  desc:'Fire trail. Body hit = instant kill' },
   { id:'five',     name:'FIVE ARROW BURST', short:'FIVE',  ico:'🌟', unlock:25, cost:1000, desc:'5 arrows in a fan' },
   { id:'bomb',     name:'BOMB THROW',     short:'BOMB',    ico:'💣', unlock:35, cost:1500, desc:'Explodes, kills all in radius. 3s cooldown' },
+  { id:'seeking',  name:'SEEKING ARROW',  short:'SEEK',    ico:'🧲', unlock:45, cost:null, desc:'Curves toward the nearest enemy' },
   { id:'explosive',name:'EXPLOSIVE ARROW',short:'BOOM',    ico:'💥', unlock:50, cost:2500, desc:'Arrow explodes on impact' },
-  { id:'ice',      name:'ICE ARROW',      short:'ICE',     ico:'❄️', unlock:60, cost:4000, desc:'Freezes enemies 2 seconds' }
+  { id:'ice',      name:'ICE ARROW',      short:'ICE',     ico:'❄️', unlock:60, cost:4000, desc:'Freezes enemies 2 seconds' },
+  { id:'piercing', name:'SHADOW PIERCER', short:'PIERCE',  ico:'🔱', unlock:70, cost:null, desc:'Passes through enemies in a line' }
 ];
 function weaponById(id){ for (var i=0;i<WEAPONS.length;i++) if (WEAPONS[i].id===id) return WEAPONS[i]; return WEAPONS[0]; }
+function arrowKindForWeapon(wid){
+  if (wid === 'flame') return 'flame';
+  if (wid === 'ice') return 'ice';
+  if (wid === 'explosive') return 'explosive';
+  if (wid === 'piercing') return 'piercing';
+  if (wid === 'seeking') return 'seeking';
+  return 'normal';
+}
 
 
 /* ---------------- Save ---------------- */
@@ -415,7 +425,7 @@ var G = {
   particles:[], floaters:[], perches:[], stars:[],
   spawnQueue:0, spawnTimer:0, spawnInterval:1.4,
   time:0, timeScale:1, slowmo:0, shake:0, flash:0,
-  aiming:false, aimPower:0, aimDir:{x:1,y:-0.4}, lastShot:0,
+  aiming:false, aimPower:0, aimDir:{x:1,y:-0.4}, lastShot:0, releaseT:0,
   tutStep:0, tutTimer:0, levelCoins:0, snapScore:0, snapCoins:0,
   mistX:0, moonPulse:0, hpMax:100,
   wind:0, windTimer:0, combo:0, comboTimer:0, boss:null,
@@ -764,62 +774,124 @@ function drawPerch(p){
 }
 
 /* ---------------- Drawing: characters ---------------- */
-function drawArcher(x, y, h, facing, aimAngle, pulling, power){
-  // x,y = feet position. facing: 1 = right, -1 = left. Pure black silhouette.
+function drawNockedArrow(h, gripX, gripY, dx, dy, kind){
+  // The RED nock/tail sits exactly in the draw hand; the shaft runs forward
+  // through the bow. The arrow slides back as the draw increases.
+  var shaftLen = kind === 'piercing' ? h*1.0 : h*0.85;
+  var tipX = gripX + dx*shaftLen, tipY = gripY + dy*shaftLen;
+  var shaftCol = '#f5e9c8';
+  if (kind === 'flame') shaftCol = '#ff9d2e';
+  else if (kind === 'ice' || kind === 'piercing') shaftCol = '#9fdcff';
+  else if (kind === 'explosive') shaftCol = '#ffb347';
+  else if (kind === 'seeking') shaftCol = '#7ef0dd';
+  ctx.strokeStyle = shaftCol; ctx.lineWidth = Math.max(2, h*0.035); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(gripX, gripY); ctx.lineTo(tipX, tipY); ctx.stroke();
+  // arrowhead
+  var px = -dy, py = dx;
+  ctx.fillStyle = shaftCol;
+  ctx.beginPath();
+  ctx.moveTo(tipX + dx*h*0.06, tipY + dy*h*0.06);
+  ctx.lineTo(tipX - dx*h*0.03 + px*h*0.05, tipY - dy*h*0.03 + py*h*0.05);
+  ctx.lineTo(tipX - dx*h*0.03 - px*h*0.05, tipY - dy*h*0.03 - py*h*0.05);
+  ctx.closePath(); ctx.fill();
+  // RED fletching at the tail (the nock the hand grips)
+  ctx.strokeStyle = '#e5322d'; ctx.lineWidth = Math.max(2, h*0.03);
+  var f = h*0.08;
+  ctx.beginPath(); ctx.moveTo(gripX, gripY); ctx.lineTo(gripX + dx*f + px*f*0.6, gripY + dy*f + py*f*0.6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(gripX, gripY); ctx.lineTo(gripX + dx*f - px*f*0.6, gripY + dy*f - py*f*0.6); ctx.stroke();
+}
+function drawThrowPose(h, shX, shY2, dx, dy, pulling, power){
+  // Bomb throw: no bow. The off arm points forward along the aim line; the
+  // throwing hand cocks back as the player drags. A fused bomb sits in it.
+  var p = pulling ? power : 0;
+  ctx.lineWidth = h*0.05; ctx.lineCap = 'round';
+  var ox = shX + dx*h*0.28, oy = shY2 + dy*h*0.28;
+  var oex = (shX + ox)/2, oey = (shY2 + oy)/2 + h*0.04;
+  ctx.beginPath(); ctx.moveTo(shX, shY2); ctx.lineTo(oex, oey); ctx.lineTo(ox, oy); ctx.stroke();
+  var hand = throwHandLocal(h, Math.atan2(dy, dx), p);
+  var tex = (shX + hand.x)/2, tey = (shY2 + hand.y)/2 + h*0.06;
+  ctx.beginPath(); ctx.moveTo(shX, shY2); ctx.lineTo(tex, tey); ctx.lineTo(hand.x, hand.y); ctx.stroke();
+  // fused bomb in the throwing hand (gone once released: p < 0 = follow-through)
+  if (p >= 0){
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(hand.x, hand.y - h*0.05, h*0.09, 0, 6.283); ctx.fill();
+    ctx.strokeStyle = '#ff9d2e'; ctx.lineWidth = Math.max(1.5, h*0.02);
+    ctx.beginPath(); ctx.moveTo(hand.x, hand.y - h*0.14); ctx.quadraticCurveTo(hand.x + h*0.08, hand.y - h*0.20, hand.x + h*0.12, hand.y - h*0.16); ctx.stroke();
+    ctx.fillStyle = Math.sin(G.time*22) > 0 ? '#ffdd00' : '#ff7a00';
+    ctx.beginPath(); ctx.arc(hand.x + h*0.12, hand.y - h*0.16, h*0.035, 0, 6.283); ctx.fill();
+  }
+}
+function drawArcher(x, y, h, facing, aimAngle, pulling, power, mode, arrowKind){
+  // x,y = feet position. facing: 1 = right, -1 = left. Pure black vector
+  // shadow human: round head, torso, two standing legs, two articulated
+  // arms. No eyes, no face. mode: 'bow' (default) or 'throw' (bomb).
+  mode = mode || 'bow';
+  arrowKind = arrowKind || 'normal';
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(facing, 1);
   ctx.fillStyle = '#000';
   ctx.strokeStyle = '#000';
-  var legH = h*0.42, torsoH = h*0.34, headR = h*0.11;
-  var hipY = -legH, shY = -(legH + torsoH), headY = shY - headR - 2;
+  ctx.lineCap = 'round';
+  var g = archerGeom(h, aimAngle, pulling ? power : 0);
   // legs (slight stance)
-  ctx.lineWidth = h*0.075; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-h*0.10, hipY); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(h*0.12, hipY); ctx.stroke();
+  ctx.lineWidth = h*0.075;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-h*0.10, g.hipY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(h*0.12, g.hipY); ctx.stroke();
   // torso
-  ctx.beginPath(); ctx.moveTo(-h*0.05, hipY); ctx.lineTo(h*0.05, shY); ctx.lineWidth = h*0.11; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-h*0.05, g.hipY); ctx.lineTo(h*0.05, g.shY); ctx.lineWidth = h*0.11; ctx.stroke();
   // head
-  ctx.beginPath(); ctx.arc(h*0.03, headY, headR, 0, 6.283); ctx.fill();
-  // hood point
-  ctx.beginPath(); ctx.moveTo(h*0.03 - headR, headY - headR*0.4); ctx.lineTo(h*0.03 + headR*0.4, headY - headR*1.7); ctx.lineTo(h*0.03 + headR*1.05, headY - headR*0.2); ctx.fill();
-  // bow arm + bow
-  var bx = h*0.16, by = shY + h*0.05;
+  ctx.beginPath(); ctx.arc(h*0.03, g.headY, g.headR, 0, 6.283); ctx.fill();
+  // hood point (keeps the hooded shadow silhouette)
+  ctx.beginPath(); ctx.moveTo(h*0.03 - g.headR, g.headY - g.headR*0.4); ctx.lineTo(h*0.03 + g.headR*0.4, g.headY - g.headR*1.7); ctx.lineTo(h*0.03 + g.headR*1.05, g.headY - g.headR*0.2); ctx.fill();
+  if (mode === 'throw'){
+    drawThrowPose(h, g.shX, g.shY2, g.dx, g.dy, pulling, power);
+    ctx.restore();
+    return;
+  }
+  // ---- bow mode ----
+  // bow arm (articulated): shoulder -> elbow -> bow hand, stretched along the aim line
+  var e1x = (g.shX + g.bx)/2, e1y = (g.shY2 + g.by)/2 + h*0.04;
   ctx.lineWidth = h*0.05;
-  ctx.beginPath(); ctx.moveTo(h*0.02, shY + h*0.04); ctx.lineTo(bx, by); ctx.stroke();
-  var bowR = h*0.42;
-  var bowA = aimAngle;
+  ctx.beginPath(); ctx.moveTo(g.shX, g.shY2); ctx.lineTo(e1x, e1y); ctx.lineTo(g.bx, g.by); ctx.stroke();
+  // bow arc
   ctx.lineWidth = h*0.035;
-  ctx.beginPath(); ctx.arc(bx, by, bowR, bowA - 1.1, bowA + 1.1); ctx.stroke();
-  // bowstring
-  var sx1 = bx + Math.cos(bowA - 1.1)*bowR, sy1 = by + Math.sin(bowA - 1.1)*bowR;
-  var sx2 = bx + Math.cos(bowA + 1.1)*bowR, sy2 = by + Math.sin(bowA + 1.1)*bowR;
-  var pull = pulling ? power * bowR * 0.55 : 0;
-  var gripX = bx + Math.cos(bowA)*bowR - Math.cos(bowA)*pull;
-  var gripY = by + Math.sin(bowA)*bowR - Math.sin(bowA)*pull;
+  ctx.beginPath(); ctx.arc(g.bx, g.by, g.bowR, aimAngle - 1.1, aimAngle + 1.1); ctx.stroke();
+  // bowstring: tips to the draw hand (travels back with the pull, to the cheek)
+  var sx1 = g.bx + Math.cos(aimAngle - 1.1)*g.bowR, sy1 = g.by + Math.sin(aimAngle - 1.1)*g.bowR;
+  var sx2 = g.bx + Math.cos(aimAngle + 1.1)*g.bowR, sy2 = g.by + Math.sin(aimAngle + 1.1)*g.bowR;
   ctx.lineWidth = 1.4;
-  ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(gripX, gripY); ctx.lineTo(sx2, sy2); ctx.stroke();
-  // string arm (drawing arm) when pulling
+  ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(g.gripX, g.gripY); ctx.lineTo(sx2, sy2); ctx.stroke();
+  // draw arm (articulated) + nocked arrow when pulling
   if (pulling){
+    var e2x = (g.shX + g.gripX)/2 - h*0.06, e2y = (g.shY2 + g.gripY)/2 + h*0.03;
     ctx.lineWidth = h*0.05;
-    ctx.beginPath(); ctx.moveTo(h*0.02, shY + h*0.06); ctx.lineTo(gripX - h*0.06, gripY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(g.shX, g.shY2); ctx.lineTo(e2x, e2y); ctx.lineTo(g.gripX, g.gripY); ctx.stroke();
+    // the nocked arrow is gone once released (power < 0 = follow-through)
+    if (power >= 0) drawNockedArrow(h, g.gripX, g.gripY, g.dx, g.dy, arrowKind);
+    // fist over the grip point
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(g.gripX, g.gripY, h*0.045, 0, 6.283); ctx.fill();
   }
   // quiver on back
-  ctx.fillRect(-h*0.10, shY + h*0.02, h*0.05, h*0.20);
+  ctx.fillRect(-h*0.10, g.shY + h*0.02, h*0.05, h*0.20);
   ctx.restore();
 }
 function drawPlayer(){
   var p = G.player;
   var pulling = G.aiming && G.aimPower > 0.02;
-  drawArcher(p.x, p.y, p.h, 1, p.aimAngle, pulling, G.aimPower);
-  // nocked arrow glow while pulling
-  if (pulling){
-    var ax = p.x + Math.cos(p.aimAngle)*p.h*0.5, ay = p.y - p.h*0.55 + Math.sin(p.aimAngle)*p.h*0.5;
-    ctx.strokeStyle = 'rgba(255,170,60,' + (0.4 + G.aimPower*0.6) + ')';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(ax - Math.cos(p.aimAngle)*26*S, ay - Math.sin(p.aimAngle)*26*S);
-    ctx.lineTo(ax, ay); ctx.stroke();
-  }
+  var power = G.aimPower;
+  // Release follow-through: for a beat after loosing, the hand snaps forward.
+  if (G.releaseT > 0 && !G.aiming){ pulling = true; power = -0.55; }
+  var mode = G.weaponId === 'bomb' ? 'throw' : 'bow';
+  drawArcher(p.x, p.y, p.h, 1, p.aimAngle, pulling, power, mode, arrowKindForWeapon(G.weaponId));
+}
+function enemyDrawState(e){
+  // Telegraph: an enemy draws its bow in the last 0.6s before firing.
+  var d = enemyDelay(G.level);
+  var pulling = (d !== Infinity && e.frozen <= 0 && e.shootT > 0 && e.shootT < 0.6);
+  var power = pulling ? Math.max(0, Math.min(1, 1 - e.shootT/0.6)) : 0;
+  return { pulling:pulling, power:power };
 }
 function drawEnemy(e){
   var frozen = e.frozen > 0;
@@ -832,7 +904,13 @@ function drawEnemy(e){
     ctx.beginPath(); ctx.arc(e.x, e.y - e.h/2, e.h*0.62, 0, 6.283); ctx.fill();
   }
   var sway = Math.sin(G.time*1.3 + e.sway) * 0.06;
-  drawArcher(e.x, e.y, e.h, -1, Math.PI + sway + 0.5, false, 0);
+  // Aim at the player (local angle accounts for the facing flip), with a
+  // slight wobble. Draw the bow as the shot approaches (telegraph).
+  var pl = G.player;
+  var theta = pl ? Math.atan2((pl.y - pl.h*0.55) - (e.y - e.h*0.55), pl.x - e.x) : Math.PI;
+  var aimA = Math.PI - theta + sway;
+  var ds = enemyDrawState(e);
+  drawArcher(e.x, e.y, e.h, -1, aimA, ds.pulling, ds.power, 'bow', 'normal');
   if (e.boss){
     // glowing red eyes + crown
     ctx.fillStyle = '#ff2d40';
@@ -870,19 +948,22 @@ function drawArrow(a){
   ctx.save();
   ctx.translate(a.x, a.y);
   ctx.rotate(Math.atan2(a.vy, a.vx));
-  var len = 30*S;
-  if (a.kind === 'flame'){
-    ctx.strokeStyle = 'rgba(255,120,20,0.9)'; ctx.lineWidth = 5*S; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(-len*0.4, 0); ctx.stroke();
-  } else if (a.kind === 'ice'){
-    ctx.strokeStyle = 'rgba(140,220,255,0.9)'; ctx.lineWidth = 5*S; ctx.lineCap = 'round';
+  var len = a.kind === 'piercing' ? 44*S : 30*S;
+  // shaft / tip / fletching colours by kind
+  var shaft = '#e8dcc0', tip = '#e8dcc0', fletch = '#fff', trail = null;
+  if (a.kind === 'flame'){ tip = '#ff7a00'; fletch = '#ff7a00'; trail = 'rgba(255,120,20,0.9)'; }
+  else if (a.kind === 'ice'){ tip = '#9fdcff'; trail = 'rgba(140,220,255,0.9)'; }
+  else if (a.kind === 'piercing'){ shaft = '#9fdcff'; tip = '#9fdcff'; fletch = '#9fdcff'; trail = 'rgba(140,220,255,0.9)'; }
+  else if (a.kind === 'seeking'){ shaft = '#7ef0dd'; tip = '#2dd4bf'; fletch = '#2dd4bf'; trail = 'rgba(45,212,191,0.9)'; }
+  if (trail){
+    ctx.strokeStyle = trail; ctx.lineWidth = 5*S; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(-len*0.4, 0); ctx.stroke();
   }
-  ctx.strokeStyle = a.enemy ? '#c9c9c9' : '#e8dcc0'; ctx.lineWidth = 2.5*S; ctx.lineCap = 'round';
+  ctx.strokeStyle = a.enemy ? '#c9c9c9' : shaft; ctx.lineWidth = 2.5*S; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(len*0.7, 0); ctx.stroke();
-  ctx.fillStyle = a.kind === 'flame' ? '#ff7a00' : (a.kind === 'ice' ? '#9fdcff' : '#e8dcc0');
+  ctx.fillStyle = tip;
   ctx.beginPath(); ctx.moveTo(len*0.7, -4*S); ctx.lineTo(len, 0); ctx.lineTo(len*0.7, 4*S); ctx.fill();
-  ctx.strokeStyle = a.kind === 'flame' ? '#ff7a00' : '#fff';
+  ctx.strokeStyle = fletch;
   ctx.lineWidth = 2*S;
   ctx.beginPath(); ctx.moveTo(-len, -4*S); ctx.lineTo(-len - 6*S, 0); ctx.lineTo(-len, 4*S); ctx.stroke();
   ctx.restore();
@@ -898,16 +979,22 @@ function drawBomb(b){
   ctx.beginPath(); ctx.arc(12*S, -14*S, 3.5*S, 0, 6.283); ctx.fill();
   ctx.restore();
 }
+function trajectoryShown(){ return G.level <= 3; }
 function drawTrajectory(){
+  // Aim guide: shown on Levels 1-3 only. From Level 4 the player aims by feel.
+  if (!trajectoryShown()) return;
   if (!G.aiming || G.aimPower < 0.03) return;
-  var sp = arrowSpeed(G.aimPower, G.weaponId);
+  var isBomb = G.weaponId === 'bomb';
+  var kind = arrowKindForWeapon(G.weaponId);
+  var sp = isBomb ? arrowSpeed(G.aimPower, 'starter') * 0.85 : arrowSpeed(G.aimPower, G.weaponId);
   var vx = Math.cos(G.player.aimAngle) * sp, vy = Math.sin(G.player.aimAngle) * sp;
-  var x = G.player.x + Math.cos(G.player.aimAngle)*G.player.h*0.55;
-  var y = G.player.y - G.player.h*0.55 + Math.sin(G.player.aimAngle)*G.player.h*0.55;
-  var dt = 0.05, grav = 1500*S;
+  var st = isBomb ? throwHandPos() : spawnForAngle(G.player.aimAngle, G.aimPower, kind);
+  var x = st.x, y = st.y;
+  var dt = 0.05, grav = kind === 'piercing' ? 500*S : 1500*S;
+  var windF = isBomb ? 200*S : 260*S;
   var bright = (G.level <= 2);
   for (var i=0;i<26;i++){
-    vx += G.wind * 260 * S * dt; vy += grav*dt; x += vx*dt; y += vy*dt;
+    vx += G.wind * windF * dt; vy += grav*dt; x += vx*dt; y += vy*dt;
     if (y > groundY) break;
     ctx.fillStyle = bright ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,' + (0.85 - i*0.025) + ')';
     ctx.beginPath(); ctx.arc(x, y, bright ? 4*S : 3.2*S, 0, 6.283); ctx.fill();
@@ -972,13 +1059,63 @@ function roundRect(x, y, w, h, r){
 }
 
 /* ---------------- Aiming & firing ---------------- */
+/* Figure geometry shared by the archer drawing and the arrow spawn, so the
+   nocked arrow, the flying arrow and the trajectory all agree. All positions
+   are figure-local (origin at the feet, +x = facing direction, -y = up). */
+function archerGeom(h, aimAngle, power){
+  var legH = h*0.42, torsoH = h*0.34, headR = h*0.11;
+  var hipY = -legH, shY = -(legH + torsoH), headY = shY - headR - 2;
+  var shX = h*0.02, shY2 = shY + h*0.04; // shoulder
+  var dx = Math.cos(aimAngle), dy = Math.sin(aimAngle); // aim direction
+  var bowR = h*0.42;
+  var bx = shX + dx*h*0.30, by = shY2 + dy*h*0.30; // bow hand
+  var restX = bx + dx*bowR*0.45, restY = by + dy*bowR*0.45; // string at rest (chord)
+  var cheekX = h*0.14, cheekY = headY;
+  var pw = power < 0 ? power : Math.pow(power, 0.9); // eased draw; negative = release snap-forward
+  var gripX = restX + (cheekX - restX)*pw;
+  var gripY = restY + (cheekY - restY)*pw;
+  return { legH:legH, torsoH:torsoH, headR:headR, hipY:hipY, shY:shY, headY:headY,
+    shX:shX, shY2:shY2, dx:dx, dy:dy, bowR:bowR, bx:bx, by:by,
+    restX:restX, restY:restY, cheekX:cheekX, cheekY:cheekY,
+    gripX:gripX, gripY:gripY };
+}
+function throwHandLocal(h, aimAngle, power){
+  // Figure-local position of the throwing hand. It cocks back and up,
+  // opposite the throw, as power grows.
+  var legH = h*0.42, torsoH = h*0.34;
+  var shY = -(legH + torsoH);
+  var sx = h*0.02, sy = shY + h*0.04;
+  var dx = Math.cos(aimAngle), dy = Math.sin(aimAngle);
+  var cx = -dx, cy = -dy - 0.8;
+  var cl = Math.sqrt(cx*cx + cy*cy) || 1;
+  var pw = power < 0 ? power : Math.pow(Math.max(0, Math.min(1, power)), 0.9);
+  var cock = pw * h * 0.30;
+  return { x: sx + (cx/cl)*cock, y: sy + (cy/cl)*cock };
+}
+function throwHandPos(){
+  // World position of the player's throwing hand (bomb spawn point).
+  var p = G.player;
+  var l = throwHandLocal(p.h, p.aimAngle, G.aimPower);
+  return { x: p.x + l.x, y: p.y + l.y };
+}
+function spawnForAngle(a, power, kind){
+  // World position of a flying arrow's centre at release, so its tip starts
+  // exactly where the nocked arrow's tip is (no visual jump on release).
+  var p = G.player, h = p.h;
+  var g = archerGeom(h, a, power);
+  var shaftLen = kind === 'piercing' ? h*1.0 : h*0.85;
+  var len = kind === 'piercing' ? 44*S : 30*S;
+  var tipX = p.x + g.gripX + g.dx*shaftLen;
+  var tipY = p.y + g.gripY + g.dy*shaftLen;
+  return { x: tipX - g.dx*len, y: tipY - g.dy*len };
+}
 function bowAnchor(){
   var p = G.player;
   return { x:p.x + 6*S, y:p.y - p.h*0.55 };
 }
 function arrowSpeed(power, weaponId){
   var base = (350 + power * 1250) * S;
-  if (weaponId === 'swift') base *= 1.5;
+  if (weaponId === 'swift' || weaponId === 'piercing') base *= 1.5; // flat and fast
   return base * arrowSpeedMul();
 }
 function pointerPos(ev){
@@ -1046,9 +1183,10 @@ function fireWeapon(){
   if (w.id === 'bomb'){
     if (G.bombCd > 0){ toast('Bomb recharging… ' + G.bombCd.toFixed(1) + 's'); return; }
     G.bombCd = 3;
-    var b = bowAnchor();
+    var b = throwHandPos(); // the bomb leaves the throwing hand, not the bow
     var sp = arrowSpeed(G.aimPower, 'starter') * 0.85;
     G.bombs.push({ x:b.x, y:b.y, vx:Math.cos(G.player.aimAngle)*sp, vy:Math.sin(G.player.aimAngle)*sp });
+    G.releaseT = 0.34; // throw follow-through (hand swings forward)
     AudioEng.shoot();
     renderWeaponBar();
     return;
@@ -1056,24 +1194,27 @@ function fireWeapon(){
   var angles = [0];
   if (w.id === 'triple') angles = [-0.12, 0, 0.12];
   if (w.id === 'five') angles = [-0.24, -0.12, 0, 0.12, 0.24];
-  var b = bowAnchor();
+  var kind = arrowKindForWeapon(w.id);
   for (var i=0;i<angles.length;i++){
     var a = G.player.aimAngle + angles[i];
     var sp = arrowSpeed(G.aimPower, w.id);
+    var s = spawnForAngle(a, G.aimPower, kind);
     G.arrows.push({
-      x:b.x + Math.cos(a)*G.player.h*0.55, y:b.y + Math.sin(a)*G.player.h*0.55,
+      x:s.x, y:s.y,
       vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
-      kind: w.id === 'flame' ? 'flame' : (w.id === 'ice' ? 'ice' : (w.id === 'explosive' ? 'explosive' : 'normal')),
+      kind:kind,
       enemy:false, weapon:w.id, dead:false
     });
   }
+  G.releaseT = 0.28; // release follow-through (hand snaps forward)
   AudioEng.shoot();
 }
 
 /* ---------------- Combat ---------------- */
-function enemyHitTest(a){
+function enemyHitTest(a, skip){
   for (var i=0;i<G.enemies.length;i++){
     var e = G.enemies[i]; if (e.dead) continue;
+    if (skip && skip.indexOf(e) !== -1) continue; // piercing arrows never hit the same enemy twice
     var hx = e.x, hy = e.y - e.h + 6*S, hr = e.boss ? 16*S : 11*S;
     var dx = a.x - hx, dy = a.y - hy;
     if (dx*dx + dy*dy < hr*hr) return { e:e, zone:'head' };
@@ -1217,6 +1358,7 @@ function loop(ts){
   var dt = rawDt * G.timeScale;
   if (G.state === 'playing'){
     if (G.bombCd > 0) G.bombCd = Math.max(0, G.bombCd - rawDt);
+    if (G.releaseT > 0) G.releaseT = Math.max(0, G.releaseT - rawDt);
     if (G.windTimer > 0){ G.windTimer -= rawDt; if (G.windTimer <= 0) setWind(); }
     if (G.comboTimer > 0){ G.comboTimer -= rawDt; if (G.comboTimer <= 0){ G.combo = 0; updateComboHUD(); } }
     if (G.pickupTimer > 0){
@@ -1274,11 +1416,42 @@ function updateSpawning(dt){
     levelComplete();
   }
 }
+function steerSeeking(a, dt){
+  // Bend a seeking arrow toward the nearest living enemy, keeping its speed.
+  var best = null, bestD = Infinity;
+  for (var j=0;j<G.enemies.length;j++){
+    var e = G.enemies[j]; if (e.dead) continue;
+    var dx = e.x - a.x, dy = (e.y - e.h/2) - a.y;
+    var d = dx*dx + dy*dy;
+    if (d < bestD){ bestD = d; best = e; }
+  }
+  if (!best) return;
+  var sp = Math.sqrt(a.vx*a.vx + a.vy*a.vy);
+  if (sp < 1) return;
+  var want = Math.atan2((best.y - best.h/2) - a.y, best.x - a.x);
+  var cur = Math.atan2(a.vy, a.vx);
+  var diff = want - cur;
+  while (diff > Math.PI) diff -= Math.PI*2;
+  while (diff < -Math.PI) diff += Math.PI*2;
+  var maxTurn = 3.2 * dt;
+  var turn = Math.max(-maxTurn, Math.min(maxTurn, diff));
+  var na = cur + turn;
+  a.vx = Math.cos(na) * sp; a.vy = Math.sin(na) * sp;
+}
 function updateArrows(dt){
   var grav = 1500 * S;
   for (var i=G.arrows.length-1;i>=0;i--){
     var a = G.arrows[i];
-    a.vx += G.wind * 260 * S * dt; a.vy += grav * dt; a.x += a.vx * dt; a.y += a.vy * dt;
+    // Piercing arrows fly flat (less gravity); seeking arrows steer in flight.
+    var g = a.kind === 'piercing' ? 500 * S : grav;
+    a.vx += G.wind * 260 * S * dt; a.vy += g * dt;
+    if (a.kind === 'seeking') steerSeeking(a, dt);
+    a.x += a.vx * dt; a.y += a.vy * dt;
+    if (a.kind === 'seeking'){
+      // a missed seeking arrow must not orbit forever
+      a.life = (a.life === undefined ? 3.2 : a.life) - dt;
+      if (a.life <= 0){ G.arrows.splice(i, 1); continue; }
+    }
     if (a.kind === 'flame' && Math.random() < 0.6){
       G.particles.push({ x:a.x - a.vx*0.02, y:a.y - a.vy*0.02, vx:(Math.random()-0.5)*40, vy:-30 - Math.random()*40,
         life:0.35, max:0.35, size:3 + Math.random()*3, color:'rgba(255,' + (100 + Math.floor(Math.random()*80)) + ',20,0.9)', grav:-60 });
@@ -1289,10 +1462,17 @@ function updateArrows(dt){
       G.arrows.splice(i, 1);
       continue;
     }
-    var hit = enemyHitTest(a);
+    var hit = a.kind === 'piercing' ? enemyHitTest(a, a.hit) : enemyHitTest(a);
     if (hit){
       if (a.kind === 'explosive'){ explodeAt(a.x, a.y, 110*S); }
       else damageEnemy(hit.e, hit.zone, a.kind);
+      if (a.kind === 'piercing'){
+        // pass straight through: mark this enemy hit and keep flying
+        if (!a.hit) a.hit = [];
+        a.hit.push(hit.e);
+        floater(hit.e.x, hit.e.y - hit.e.h - 14*S, 'PIERCED!', '#9fdcff', 18*S);
+        continue;
+      }
       G.arrows.splice(i, 1);
       continue;
     }
@@ -1462,7 +1642,7 @@ function startLevel(n){
   G.boss = null; G.lightning = 0; G.lightningTimer = 10 + Math.random()*10;
   G.raining = (G.level % 4 === 0);
   G.slowmo = 0; G.timeScale = 1; G.shake = 0; G.flash = 0;
-  G.aiming = false; G.aimPower = 0;
+  G.aiming = false; G.aimPower = 0; G.releaseT = 0;
   G.tutStep = (G.level <= 2) ? 0 : 4;
   G.tutTimer = 0; G.levelCoins = 0;
   G.snapScore = G.score; G.snapCoins = G.coins;
@@ -1529,7 +1709,7 @@ function toMenu(){
   G.enemies = []; G.arrows = []; G.eArrows = []; G.bombs = []; G.floaters = [];
   makePerches(); G.player = makePlayer();
   spawnEnemy(); spawnEnemy();
-  document.getElementById('menuHigh').textContent = 'HIGH SCORE: ' + save.highScore + '  •  70 LEVELS  •  8 WEAPONS  •  BOSSES + SHOP';
+  document.getElementById('menuHigh').textContent = 'HIGH SCORE: ' + save.highScore + '  •  70 LEVELS  •  10 WEAPONS  •  BOSSES + SHOP';
   hideScreens();
   document.getElementById('hud').style.display = 'none';
   document.getElementById('weaponBar').style.display = 'none';
@@ -1557,6 +1737,7 @@ function updateHUD(){
     } else bb.style.display = 'none';
   }
 }
+function weaponForSale(w){ return w.cost != null && w.cost > 0; }
 function renderWeaponBar(){
   var bar = $('weaponBar');
   bar.innerHTML = '';
@@ -1565,20 +1746,23 @@ function renderWeaponBar(){
     var b = document.createElement('div');
     b.className = 'wBtn' + (owned ? '' : ' locked') + (G.weaponId === w.id ? ' sel' : '');
     b.dataset.wid = w.id;
-    var sub = owned ? w.desc : ('Unlocks at Lv ' + w.unlock + ' • 🪙' + w.cost);
+    var forSale = weaponForSale(w);
+    var sub = owned ? w.desc : (forSale ? ('Unlocks at Lv ' + w.unlock + ' • 🪙' + w.cost) : ('Unlocks at Lv ' + w.unlock + ' • FREE — not for sale'));
     b.innerHTML = '<span class="wIco">' + w.ico + '</span><span class="wName">' + w.name + '</span><span class="wSub">' + sub + '</span><span class="cd"></span>';
     b.addEventListener('click', function(){
       AudioEng.ensure();
       if (owned){
         G.weaponId = w.id; updateHUD(); renderWeaponBar();
         toast(w.name + ' equipped');
-      } else if (G.coins >= w.cost){
+      } else if (forSale && G.coins >= w.cost){
         G.coins -= w.cost; save.coins = G.coins;
         save.weapons.push(w.id); storeSave();
         G.weaponId = w.id; updateHUD(); renderWeaponBar();
         toast('🔓 Unlocked ' + w.name + ' early with coins!');
-      } else {
+      } else if (forSale){
         toast('Need ' + (w.cost - G.coins) + ' more coins — or reach Level ' + w.unlock);
+      } else {
+        toast(w.name + ' cannot be bought — reach Level ' + w.unlock + ' to unlock it free!');
       }
     });
     bar.appendChild(b);
@@ -1711,7 +1895,7 @@ G.coins = save.coins || 0;
 G.score = 0;
 spawnEnemy(); spawnEnemy(); // decorative shadows behind the menu
 syncMuteIcons();
-$('menuHigh').textContent = 'HIGH SCORE: ' + save.highScore + '  •  70 LEVELS  •  8 WEAPONS  •  BOSSES + SHOP';
+$('menuHigh').textContent = 'HIGH SCORE: ' + save.highScore + '  •  70 LEVELS  •  10 WEAPONS  •  BOSSES + SHOP';
 $('hud').style.display = 'none';
 $('weaponBar').style.display = 'none';
 updateHUD();
@@ -1727,7 +1911,13 @@ window.__SA = { G:G, WEAPONS:WEAPONS, save:save, startLevel:startLevel, fireWeap
   spawnPickup:spawnPickup, collectPickup:collectPickup, levelComplete:levelComplete,
   showScreen:showScreen, menuMusicTryPlay:menuMusicTryPlay, menuMusicStop:menuMusicStop,
   menuMusicAllow:menuMusicAllow, menuMusicEl:menuMusicEl,
-  pauseGame:pauseGame, resumeGame:resumeGame };
+  pauseGame:pauseGame, resumeGame:resumeGame,
+  drawArcher:drawArcher, drawPlayer:drawPlayer, drawEnemy:drawEnemy,
+  bowAnchor:bowAnchor, throwHandPos:throwHandPos, throwHandLocal:throwHandLocal,
+  trajectoryShown:trajectoryShown, weaponForSale:weaponForSale,
+  arrowKindForWeapon:arrowKindForWeapon, steerSeeking:steerSeeking,
+  spawnForAngle:spawnForAngle, archerGeom:archerGeom, enemyHitTest:enemyHitTest,
+  renderWeaponBar:renderWeaponBar, enemyDrawState:enemyDrawState };
 </script>
 </body>
 </html>
