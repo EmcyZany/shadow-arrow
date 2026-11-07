@@ -28,10 +28,18 @@ rooftops. Kill them all and survive 70 levels.
   shields block the next enemy hit.
 - **Pause** with the ⏸️ button in the top bar (the game also pauses itself if
   you switch away). **Mute** with the 🔊 button — the homepage has one too.
-- **Landscape mode:** rotate your phone and the game fills the wide screen —
-  enemies spread out across the field instead of bunching up. The top bar
-  compacts to one row and the menus scroll to fit. Rotate back any time;
-  the level keeps running, nothing resets.
+- **Landscape mode:** on a PC or desktop the game opens in landscape by
+  default — a wide view (up to 960px, 16:9) instead of a portrait column.
+  Rotate your phone and the game fills the wide screen — enemies spread out
+  across the field instead of bunching up. The top bar compacts to one row
+  and every menu compacts to fit the wide box without scrolling (two-column
+  menu buttons, two-column weapon/achievement lists, a 14-column level grid).
+  Rotate back any time; the level keeps running, nothing resets. Portrait
+  phones still get the portrait layout.
+- Enemies at the far edge of a wide screen can reach you: their arrows use
+  a ballistic arc (extra speed for long shots, so the arrow lands on you
+  instead of falling short), and every enemy arrow — including the boss's
+  3-arrow burst — points along its flight path toward you.
 - Spend coins in the **Shop** on health, arrow speed and blast radius
   upgrades. Unlock **10 weapons** as you level up (or buy them early with
   coins): Swift, Triple, Flame, Five Burst, Bomb Throw, Explosive, Ice,
@@ -56,6 +64,7 @@ Made by Samuel — follow the dev on X: https://x.com/Samuelcheq1
 
 Single-file HTML5 Canvas game, plus the `menu-music.mp3` song file. Web Audio
 API for all in-game sounds (synthesized) plus a quiet music loop. Touch and
-mouse controls. On desktop the game sits in a centered phone-sized column.
-Rotate a phone to landscape and the game fills the wide screen, spreading
-the enemies out. No dependencies.
+mouse controls. On a PC or desktop the game opens in a wide landscape view
+by default; portrait phones use a centered portrait layout. Rotate a phone
+to landscape and the game fills the wide screen, spreading the enemies out.
+No dependencies.

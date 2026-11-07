@@ -18,10 +18,11 @@
   .xLogo { width:20px; height:20px; vertical-align:-4px; }
   .menuMute { position:absolute; top:14px; right:14px; z-index:11; }
 
-  /* desktop: keep the portrait game in a centered column instead of stretching it */
-  @media (min-width: 560px){
+  /* desktop portrait: keep the game in a centered portrait column instead of stretching it */
+  @media (min-width: 560px) and (orientation: portrait){
     #gameWrap { left:50%; right:auto; transform:translateX(-50%); width:min(480px, 100vw); box-shadow:0 0 80px rgba(0,0,0,.9); }
   }
+
 
   /* ---------- Top HUD ---------- */
   #hud { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
@@ -74,6 +75,9 @@
   .btn:active { transform:translateY(3px); box-shadow:0 1px 0 #a34d00; }
   .btn.ghost { background:rgba(255,255,255,.1); color:#ffe9c4; border:1px solid rgba(255,255,255,.4); box-shadow:none; }
   .btn.small { width:auto; padding:10px 22px; font-size:14px; display:inline-block; margin:6px; }
+  /* menu buttons wrapper: transparent in portrait (buttons stack as before),
+     a two-column grid in landscape so the menu fits a short wide box */
+  .menuBtns { display:contents; }
   .panel { background:rgba(5,8,16,.88); border:1px solid rgba(255,170,60,.4); border-radius:16px;
     padding:20px; max-width:520px; width:100%; max-height:82vh; overflow-y:auto; }
   .panel h2 { color:#ff9d2e; letter-spacing:2px; margin-bottom:12px; font-size:22px; }
@@ -102,6 +106,46 @@
   .achRow.got { border-color:#7ee787; background:rgba(40,90,40,.25); }
   .achRow .aIco { font-size:22px; }
 
+  /* desktop landscape (wide screen): the game is landscape by default — a wide
+     centered box, up to ~960px, 16:9. Short landscape viewports (phones) use
+     the full-screen landscape rule below instead.
+     (Placed after the base screen rules so these compact sizes win the cascade:
+     same-specificity base rules placed later would override them, and the
+     Levels grid would fall back to 7 columns.) */
+  @media (min-width: 560px) and (orientation: landscape) and (min-height: 561px){
+    #gameWrap { left:50%; top:50%; right:auto; bottom:auto; transform:translate(-50%,-50%);
+      width:min(960px, 100vw, calc(100vh * 16 / 9)); height:auto; aspect-ratio:16/9;
+      box-shadow:0 0 80px rgba(0,0,0,.9); }
+    .screen { overflow-y:auto; justify-content:flex-start; justify-content:safe center; padding:14px 20px; }
+    .title { font-size:36px; letter-spacing:3px; }
+    .subtitle { font-size:13px; margin:6px 0 14px; letter-spacing:4px; }
+    .btn { padding:10px 16px; font-size:15px; margin:5px auto; }
+    .btn.small { padding:8px 16px; font-size:13px; margin:4px; }
+    .panel { max-height:92%; max-width:680px; padding:12px; }
+    .panel h2 { font-size:19px; margin-bottom:8px; }
+    .panel p, .panel li { font-size:13px; line-height:1.45; }
+    .panel ul { margin:6px 0; }
+    .bigScore { font-size:32px; }
+    .statRow { font-size:14px; margin:4px 0; }
+    .unlockBanner { padding:6px 12px; font-size:13px; margin:6px 0; }
+    #levelsGrid { grid-template-columns:repeat(14, 1fr); }
+    .lvlBtn { font-size:13px; }
+    .shopRow, .achRow { padding:5px 10px; margin:5px 0; }
+    .shopRow b, .achRow b { font-size:13px; }
+    .shopRow span, .achRow span { font-size:11px; }
+    .achRow .aIco { font-size:18px; }
+    /* the two long lists go two-column so they fit the short box */
+    #weaponsList, #achList { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+    #weaponsList .shopRow, #achList .achRow { margin:0; }
+    /* weapons panel is wider so every weapon's one-line label fits, and its
+       rows/buttons are compacted so all 10 weapons + BACK fit without scrolling */
+    #weaponsScreen .panel { max-width:800px; }
+    #weaponsList .wRow > div > span { font-size:10px; }
+    #weaponsList .btn.small { padding:6px 10px; font-size:12px; }
+    .muteNote { margin-top:8px; }
+    .credit { margin-top:2px; }
+  }
+
   /* ---------- Landscape phones: wide play area, compact HUD, scrollable screens ---------- */
   @media (orientation: landscape) and (max-height: 560px){
     /* the game fills the wide landscape screen instead of a portrait column */
@@ -123,6 +167,13 @@
     #levelsGrid { grid-template-columns:repeat(10, 1fr); }
     .muteNote { margin-top:8px; }
     .credit { margin-top:2px; }
+  }
+
+  /* landscape (phone + desktop): menu buttons in two columns so the whole
+     menu fits a short wide box without scrolling */
+  @media (orientation: landscape){
+    .menuBtns { display:grid; grid-template-columns:repeat(2, minmax(0,280px)); gap:10px 12px; justify-content:center; }
+    .menuBtns .btn { width:100%; margin:0; }
   }
 </style>
 </head>
@@ -159,12 +210,14 @@
   <div class="screen" id="menuScreen">
     <div class="title">SHADOW<br><span>ARROW</span></div>
     <div class="subtitle">Hunter of Shadows — v2</div>
-    <button class="btn" id="playBtn">▶ &nbsp;PLAY</button>
-    <button class="btn ghost" id="howBtn">HOW TO PLAY</button>
-    <button class="btn ghost" id="levelsBtn">LEVELS</button>
-    <button class="btn ghost" id="weaponsBtn">⚔️ WEAPONS</button>
-    <button class="btn ghost" id="shopBtn">🛒 SHOP — UPGRADES</button>
-    <button class="btn ghost" id="achBtn">🏆 ACHIEVEMENTS</button>
+    <div class="menuBtns">
+      <button class="btn" id="playBtn">▶ &nbsp;PLAY</button>
+      <button class="btn ghost" id="howBtn">HOW TO PLAY</button>
+      <button class="btn ghost" id="levelsBtn">LEVELS</button>
+      <button class="btn ghost" id="weaponsBtn">⚔️ WEAPONS</button>
+      <button class="btn ghost" id="shopBtn">🛒 SHOP — UPGRADES</button>
+      <button class="btn ghost" id="achBtn">🏆 ACHIEVEMENTS</button>
+    </div>
     <div class="muteNote" id="menuHigh">HIGH SCORE: 0 &nbsp;•&nbsp; 70 LEVELS &nbsp;•&nbsp; 10 WEAPONS</div>
     <div class="credit">This game was made by Samuel • Follow the dev on <a href="https://x.com/Samuelcheq1" target="_blank" rel="noopener" aria-label="Samuel on X"><svg class="xLogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></a></div>
     <button class="iconBtn menuMute" id="menuMuteBtn" title="Mute music">🔊</button>
@@ -494,6 +547,24 @@ function enemyDelay(l){
 }
 function enemyErrorDeg(l){ return Math.max(1.5, 16 - (l * 0.2)); }
 function enemyArrowSpeed(l){ return (520 + l * 3) * S; }
+/* Ballistic launch for enemy arrows: solve for a low-arc shot that lands on
+   (tx,ty), compensating for gravity, and boost the speed when the target is
+   too far for the base speed. Far enemies in the wide landscape layout were
+   out of range — their arrows fell to the ground short of the player. */
+function enemyBallistic(sx, sy, tx, ty, baseSpeed){
+  var grav = 600 * S;
+  var dx = tx - sx, dy = ty - sy;
+  var d = Math.abs(dx); if (d < 1) d = 1;
+  var dist = Math.sqrt(d*d + dy*dy);
+  var vMin = Math.sqrt(grav * Math.max(0, dist - dy));
+  var v = Math.max(baseSpeed, vMin * 1.25);
+  var disc = v*v*v*v - grav*(grav*d*d - 2*dy*v*v);
+  if (disc < 0) disc = 0;
+  var tanT = (v*v - Math.sqrt(disc)) / (grav*d);
+  var th = Math.atan(tanT);
+  var dir = dx < 0 ? -1 : 1;
+  return { vx: dir * Math.cos(th) * v, vy: -Math.sin(th) * v, speed: v };
+}
 
 /* ---------------- Upgrades / wind / achievements ---------------- */
 function hpMax(){ return 100 + ((save.upgrades && save.upgrades.hp) || 0) * 25; }
@@ -622,10 +693,11 @@ function spawnBoss(){
 }
 function bossSpread(e){
   var pl = G.player, sx = e.x - 10*S, sy = e.y - e.h*0.55;
+  var bal = enemyBallistic(sx, sy, pl.x, pl.y - pl.h*0.55, enemyArrowSpeed(G.level) * 0.9);
+  var baseAng = Math.atan2(bal.vy, bal.vx);
   for (var k=-1;k<=1;k++){
-    var ang = Math.atan2((pl.y - pl.h*0.55) - sy, pl.x - sx) + k*0.14;
-    var sp = enemyArrowSpeed(G.level) * 0.9;
-    G.eArrows.push({ x:sx, y:sy, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp, kind:'normal', enemy:true });
+    var ang = baseAng + k*0.14;
+    G.eArrows.push({ x:sx, y:sy, vx:Math.cos(ang)*bal.speed, vy:Math.sin(ang)*bal.speed, kind:'normal', enemy:true });
   }
   AudioEng.noise(0.25, 0.16, 1400, 400);
   floater(e.x, e.y - e.h - 14*S, '👑 SHADOW BURST!', '#ff5b6d', 16*S);
@@ -857,7 +929,7 @@ function drawThrowPose(h, shX, shY2, dx, dy, pulling, power){
   // Bomb throw: no bow. The off arm points forward along the aim line; the
   // throwing hand cocks back as the player drags. A fused bomb sits in it.
   var p = pulling ? power : 0;
-  ctx.lineWidth = h*0.05; ctx.lineCap = 'round';
+  ctx.lineWidth = h*0.071; ctx.lineCap = 'round';
   var ox = shX + dx*h*0.28, oy = shY2 + dy*h*0.28;
   var oex = (shX + ox)/2, oey = (shY2 + oy)/2 + h*0.04;
   ctx.beginPath(); ctx.moveTo(shX, shY2); ctx.lineTo(oex, oey); ctx.lineTo(ox, oy); ctx.stroke();
@@ -887,16 +959,15 @@ function drawArcher(x, y, h, facing, aimAngle, pulling, power, mode, arrowKind){
   ctx.strokeStyle = '#000';
   ctx.lineCap = 'round';
   var g = archerGeom(h, aimAngle, pulling ? power : 0);
-  // legs (slight stance)
-  ctx.lineWidth = h*0.075;
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-h*0.10, g.hipY); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(h*0.12, g.hipY); ctx.stroke();
-  // torso
-  ctx.beginPath(); ctx.moveTo(-h*0.05, g.hipY); ctx.lineTo(h*0.05, g.shY); ctx.lineWidth = h*0.11; ctx.stroke();
-  // head
-  ctx.beginPath(); ctx.arc(h*0.03, g.headY, g.headR, 0, 6.283); ctx.fill();
-  // hood point (keeps the hooded shadow silhouette)
-  ctx.beginPath(); ctx.moveTo(h*0.03 - g.headR, g.headY - g.headR*0.4); ctx.lineTo(h*0.03 + g.headR*0.4, g.headY - g.headR*1.7); ctx.lineTo(h*0.03 + g.headR*1.05, g.headY - g.headR*0.2); ctx.fill();
+  ctx.lineJoin = 'round';
+  // legs: wide stance, knees bent (look test) — hip, knee, foot
+  ctx.lineWidth = h*0.082;
+  ctx.beginPath(); ctx.moveTo(0, g.hipY); ctx.lineTo(g.frontKneeX, g.frontKneeY); ctx.lineTo(g.frontFootX, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, g.hipY); ctx.lineTo(g.backKneeX, g.backKneeY); ctx.lineTo(g.backFootX, 0); ctx.stroke();
+  // torso: hip to shoulder, one bold stroke
+  ctx.beginPath(); ctx.moveTo(0, g.hipY); ctx.lineTo(g.shX, g.shY); ctx.lineWidth = h*0.126; ctx.stroke();
+  // head: plain round, no face (clean vector head, as in the look test)
+  ctx.beginPath(); ctx.arc(g.headX, g.headY, g.headR, 0, 6.283); ctx.fill();
   if (mode === 'throw'){
     drawThrowPose(h, g.shX, g.shY2, g.dx, g.dy, pulling, power);
     ctx.restore();
@@ -904,30 +975,31 @@ function drawArcher(x, y, h, facing, aimAngle, pulling, power, mode, arrowKind){
   }
   // ---- bow mode ----
   // bow arm (articulated): shoulder -> elbow -> bow hand, stretched along the aim line
-  var e1x = (g.shX + g.bx)/2, e1y = (g.shY2 + g.by)/2 + h*0.04;
-  ctx.lineWidth = h*0.05;
+  var pwr = pulling ? power : 0;
+  var e1x = (g.shX + g.bx)/2, e1y = (g.shY2 + g.by)/2 + (1 - Math.max(0, pwr))*h*0.022 + h*0.015;
+  ctx.lineWidth = h*0.071;
   ctx.beginPath(); ctx.moveTo(g.shX, g.shY2); ctx.lineTo(e1x, e1y); ctx.lineTo(g.bx, g.by); ctx.stroke();
   // bow arc
-  ctx.lineWidth = h*0.035;
+  ctx.lineWidth = h*0.037;
   ctx.beginPath(); ctx.arc(g.bx, g.by, g.bowR, aimAngle - 1.1, aimAngle + 1.1); ctx.stroke();
   // bowstring: tips to the draw hand (travels back with the pull, to the cheek)
   var sx1 = g.bx + Math.cos(aimAngle - 1.1)*g.bowR, sy1 = g.by + Math.sin(aimAngle - 1.1)*g.bowR;
   var sx2 = g.bx + Math.cos(aimAngle + 1.1)*g.bowR, sy2 = g.by + Math.sin(aimAngle + 1.1)*g.bowR;
-  ctx.lineWidth = 1.4;
+  ctx.lineWidth = 1.6;
   ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(g.gripX, g.gripY); ctx.lineTo(sx2, sy2); ctx.stroke();
-  // draw arm (articulated) + nocked arrow when pulling
-  if (pulling){
-    var e2x = (g.shX + g.gripX)/2 - h*0.06, e2y = (g.shY2 + g.gripY)/2 + h*0.03;
-    ctx.lineWidth = h*0.05;
-    ctx.beginPath(); ctx.moveTo(g.shX, g.shY2); ctx.lineTo(e2x, e2y); ctx.lineTo(g.gripX, g.gripY); ctx.stroke();
-    // the nocked arrow is gone once released (power < 0 = follow-through)
-    if (power >= 0) drawNockedArrow(h, g.gripX, g.gripY, g.dx, g.dy, arrowKind);
-    // fist over the grip point
-    ctx.fillStyle = '#000';
-    ctx.beginPath(); ctx.arc(g.gripX, g.gripY, h*0.045, 0, 6.283); ctx.fill();
-  }
-  // quiver on back
-  ctx.fillRect(-h*0.10, g.shY + h*0.02, h*0.05, h*0.20);
+  // draw arm (articulated) + nocked arrow — always drawn (the look test
+  // shows both arms at idle too); the hand rests at the bow when not pulling.
+  var effP = pulling ? power : 0;
+  // draw elbow flares out and down behind the draw hand (look test)
+  var e2x = (g.shX + g.gripX)/2 - (h*0.045 + Math.max(0, effP)*h*0.097);
+  var e2y = (g.shY2 + g.gripY)/2 + h*0.097 + Math.max(0, effP)*h*0.037;
+  ctx.lineWidth = h*0.071;
+  ctx.beginPath(); ctx.moveTo(g.shX, g.shY2); ctx.lineTo(e2x, e2y); ctx.lineTo(g.gripX, g.gripY); ctx.stroke();
+  // the nocked arrow is gone once released (power < 0 = follow-through)
+  if (effP >= 0) drawNockedArrow(h, g.gripX, g.gripY, g.dx, g.dy, arrowKind);
+  // fist over the grip point
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(g.gripX, g.gripY, h*0.039, 0, 6.283); ctx.fill();
   ctx.restore();
 }
 function drawPlayer(){
@@ -957,18 +1029,24 @@ function drawEnemy(e){
     ctx.beginPath(); ctx.arc(e.x, e.y - e.h/2, e.h*0.62, 0, 6.283); ctx.fill();
   }
   var sway = Math.sin(G.time*1.3 + e.sway) * 0.06;
-  // Aim at the player (local angle accounts for the facing flip), with a
-  // slight wobble. Draw the bow as the shot approaches (telegraph).
+  // Aim at the player along the ballistic launch line (local angle accounts
+  // for the facing flip), with a slight wobble. The bow points where the
+  // arrow will actually leave, so the arrowhead tracks the bow. Draw the
+  // bow as the shot approaches (telegraph).
   var pl = G.player;
-  var theta = pl ? Math.atan2((pl.y - pl.h*0.55) - (e.y - e.h*0.55), pl.x - e.x) : Math.PI;
+  var theta = Math.PI;
+  if (pl){
+    var bal = enemyBallistic(e.x - 10*S, e.y - e.h*0.55, pl.x, pl.y - pl.h*0.55, enemyArrowSpeed(G.level));
+    theta = Math.atan2(bal.vy, bal.vx);
+  }
   var aimA = Math.PI - theta + sway;
   var ds = enemyDrawState(e);
   drawArcher(e.x, e.y, e.h, -1, aimA, ds.pulling, ds.power, 'bow', 'normal');
   if (e.boss){
-    // glowing red eyes + crown
+    // glowing red eyes + crown (eyes sit on the head centre, 0.899h up)
     ctx.fillStyle = '#ff2d40';
-    ctx.beginPath(); ctx.arc(e.x - 6*S, e.y - e.h*0.87, 2.6*S, 0, 6.283); ctx.fill();
-    ctx.beginPath(); ctx.arc(e.x + 6*S, e.y - e.h*0.87, 2.6*S, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x - 6*S, e.y - e.h*0.899, 2.6*S, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x + 6*S, e.y - e.h*0.899, 2.6*S, 0, 6.283); ctx.fill();
     ctx.fillStyle = '#ffd700';
     ctx.beginPath();
     ctx.moveTo(e.x - 12*S, e.y - e.h*0.98); ctx.lineTo(e.x - 6*S, e.y - e.h*1.12);
@@ -1116,28 +1194,42 @@ function roundRect(x, y, w, h, r){
    nocked arrow, the flying arrow and the trajectory all agree. All positions
    are figure-local (origin at the feet, +x = facing direction, -y = up). */
 function archerGeom(h, aimAngle, power){
-  var legH = h*0.42, torsoH = h*0.34, headR = h*0.11;
-  var hipY = -legH, shY = -(legH + torsoH), headY = shY - headR - 2;
-  var shX = h*0.02, shY2 = shY + h*0.04; // shoulder
+  // Proportions match the look test's vector human (skeleton): hip 0.414h,
+  // shoulder 0.743h, head centre 0.899h, head radius 0.10h. h is the total
+  // figure height (feet to top of head). Legs are two-segment with bent
+  // knees and a wide stance; the cheek (draw anchor) sits behind and below
+  // the head, as in the look test.
+  var legH = h*0.414, torsoH = h*0.329, headR = h*0.10;
+  var hipY = -legH, shY = -(legH + torsoH), headY = shY - h*0.156;
+  var headX = h*0.035;
+  var shX = h*0.022, shY2 = shY + h*0.02; // shoulder
   var dx = Math.cos(aimAngle), dy = Math.sin(aimAngle); // aim direction
-  var bowR = h*0.42;
-  var bx = shX + dx*h*0.30, by = shY2 + dy*h*0.30; // bow hand
+  var bowR = h*0.275;
+  var bowArmLen = h*0.327;
+  var bx = shX + dx*bowArmLen, by = shY2 + dy*bowArmLen; // bow hand
   var restX = bx + dx*bowR*0.45, restY = by + dy*bowR*0.45; // string at rest (chord)
-  var cheekX = h*0.14, cheekY = headY;
+  var cheekX = headX - h*0.052, cheekY = headY + h*0.06;
   var pw = power < 0 ? power : Math.pow(power, 0.9); // eased draw; negative = release snap-forward
   var gripX = restX + (cheekX - restX)*pw;
   var gripY = restY + (cheekY - restY)*pw;
+  // legs: wide stance, knees bent (look test)
+  var frontFootX = h*0.149, backFootX = -h*0.126;
+  var frontKneeX = frontFootX/2 + h*0.045, frontKneeY = hipY/2;
+  var backKneeX = backFootX/2 - h*0.022, backKneeY = hipY/2;
   return { legH:legH, torsoH:torsoH, headR:headR, hipY:hipY, shY:shY, headY:headY,
-    shX:shX, shY2:shY2, dx:dx, dy:dy, bowR:bowR, bx:bx, by:by,
+    headX:headX, shX:shX, shY2:shY2, dx:dx, dy:dy, bowR:bowR, bx:bx, by:by,
     restX:restX, restY:restY, cheekX:cheekX, cheekY:cheekY,
-    gripX:gripX, gripY:gripY };
+    gripX:gripX, gripY:gripY,
+    frontFootX:frontFootX, backFootX:backFootX,
+    frontKneeX:frontKneeX, frontKneeY:frontKneeY,
+    backKneeX:backKneeX, backKneeY:backKneeY };
 }
 function throwHandLocal(h, aimAngle, power){
   // Figure-local position of the throwing hand. It cocks back and up,
-  // opposite the throw, as power grows.
-  var legH = h*0.42, torsoH = h*0.34;
+  // opposite the throw, as power grows. Shoulder matches archerGeom.
+  var legH = h*0.414, torsoH = h*0.329;
   var shY = -(legH + torsoH);
-  var sx = h*0.02, sy = shY + h*0.04;
+  var sx = h*0.022, sy = shY + h*0.02;
   var dx = Math.cos(aimAngle), dy = Math.sin(aimAngle);
   var cx = -dx, cy = -dy - 0.8;
   var cl = Math.sqrt(cx*cx + cy*cy) || 1;
@@ -1603,11 +1695,11 @@ function enemyShoot(e){
   var p = G.player;
   var tx = p.x + (Math.random()-0.5) * 10, ty = p.y - p.h*0.55;
   var sx = e.x - 10*S, sy = e.y - e.h*0.55;
-  var ang = Math.atan2(ty - sy, tx - sx);
+  var bal = enemyBallistic(sx, sy, tx, ty, enemyArrowSpeed(G.level));
+  var ang = Math.atan2(bal.vy, bal.vx);
   var err = (enemyErrorDeg(G.level) * Math.PI/180) * (Math.random()*2 - 1);
   ang += err;
-  var sp = enemyArrowSpeed(G.level);
-  G.eArrows.push({ x:sx, y:sy, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp, kind:'normal', enemy:true });
+  G.eArrows.push({ x:sx, y:sy, vx:Math.cos(ang)*bal.speed, vy:Math.sin(ang)*bal.speed, kind:'normal', enemy:true });
   AudioEng.noise(0.15, 0.10, 1800, 500);
 }
 function updateParticles(dt){
@@ -1838,7 +1930,7 @@ function renderWeapons(){
     var owned = weaponOwned(w.id);
     var isSel = w.id === sel;
     var rec = isSel ? ' <span class="recTag">★ RECOMMENDED</span>' : '';
-    var sub = owned ? w.desc : (w.desc + ' — Unlocks at Lv ' + w.unlock + (weaponForSale(w) ? '' : ' • FREE — not for sale'));
+    var sub = owned ? w.desc : (w.desc + ' · Lv ' + w.unlock + (weaponForSale(w) ? '' : ' · FREE'));
     var btn;
     if (isSel) btn = '<button class="btn small" disabled>EQUIPPED ✓</button>';
     else if (owned) btn = '<button class="btn small" data-act="select" data-wid="' + w.id + '">SELECT</button>';
@@ -2016,6 +2108,8 @@ window.__SA = { G:G, WEAPONS:WEAPONS, save:save, startLevel:startLevel, fireWeap
   trajectoryShown:trajectoryShown, weaponForSale:weaponForSale,
   arrowKindForWeapon:arrowKindForWeapon, steerSeeking:steerSeeking,
   spawnForAngle:spawnForAngle, archerGeom:archerGeom, enemyHitTest:enemyHitTest,
+  enemyBallistic:enemyBallistic, enemyArrowSpeed:enemyArrowSpeed,
+  enemyShoot:enemyShoot, bossSpread:bossSpread,
   renderWeapons:renderWeapons, selectWeapon:selectWeapon, buyWeapon:buyWeapon, weaponOwned:weaponOwned,
   selectedWeapon:selectedWeapon, openWeapons:openWeapons, closeWeapons:closeWeapons,
   getWeaponsReturn:getWeaponsReturn, getCurrentScreen:getCurrentScreen,
