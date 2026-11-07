@@ -36,6 +36,11 @@ rooftops. Kill them all and survive 70 levels.
   they can be used on any level. Seeking arrows curve toward the nearest
   enemy; Shadow Piercer arrows pass straight through a line of enemies.
   The Bomb is thrown overhand, not shot from a bow.
+- **Weapon selection:** pick your weapon on the **WEAPONS** page from the
+  main menu — your selected weapon is listed first and marked RECOMMENDED.
+  It stays equipped until you are killed (no switching mid-game). When you
+  are killed, the Game Over screen lets you **Change Weapon**, then press
+  Back and **Retry Level** to play again with the new weapon.
 - Progress, coins, weapons, upgrades, mute setting and achievements save
   automatically in the browser (LocalStorage).
 

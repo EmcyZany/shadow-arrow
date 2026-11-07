@@ -49,22 +49,10 @@
   #powerLbl { position:absolute; left:34px; bottom:0; color:#fff; font-size:11px; font-weight:700;
     text-shadow:0 1px 3px #000; white-space:nowrap; }
 
-  /* ---------- Weapon bar ---------- */
-  #weaponBar { position:absolute; left:0; right:0; bottom:0; z-index:6; display:flex; gap:6px;
-    padding:8px 8px calc(8px + env(safe-area-inset-bottom)); overflow-x:auto; scrollbar-width:none;
-    background:linear-gradient(to top, rgba(0,0,0,.75), rgba(0,0,0,0)); }
-  #weaponBar::-webkit-scrollbar { display:none; }
-  .wBtn { flex:1 0 74px; min-width:74px; background:rgba(10,14,26,.85); border:2px solid rgba(255,170,60,.4);
-    border-radius:12px; color:#ffe9c4; padding:7px 4px 6px; text-align:center; cursor:pointer; position:relative; }
-  .wBtn .wIco { font-size:20px; line-height:1; display:block; }
-  .wBtn .wName { font-size:10px; font-weight:700; display:block; margin-top:3px; line-height:1.1; min-height:22px; }
-  .wBtn .wSub { font-size:9px; color:#9fd8ff; display:block; }
-  .wBtn.sel { border-color:#ffe600; background:rgba(60,40,0,.9); box-shadow:0 0 12px rgba(255,200,0,.55); }
-  .wBtn.locked { opacity:.55; border-color:rgba(255,255,255,.2); }
-  .wBtn.locked .wSub { color:#ff9d9d; }
-  .wBtn .cd { position:absolute; inset:0; border-radius:10px; background:rgba(0,0,0,.65); color:#fff;
-    display:none; align-items:center; justify-content:center; font-size:18px; font-weight:800; }
-  .wBtn.cooling .cd { display:flex; }
+  /* ---------- Weapon selection rows ---------- */
+  .wRow.sel { border-color:#ffe600; background:rgba(60,40,0,.55); box-shadow:0 0 12px rgba(255,200,0,.35); }
+  .wRow.locked { opacity:.6; }
+  .wRow .recTag { color:#ffe600; font-size:11px; font-weight:800; letter-spacing:1px; }
 
   /* ---------- Toast ---------- */
   #toast { position:absolute; left:50%; top:22%; transform:translateX(-50%); z-index:9; background:rgba(0,0,0,.85);
@@ -141,8 +129,6 @@
   <!-- Boss health bar -->
   <div id="bossBarWrap"><div id="bossBarLbl">👑 SHADOW BOSS</div><div id="bossBarOuter"><div id="bossBar"></div></div></div>
 
-  <!-- Weapon bar -->
-  <div id="weaponBar"></div>
 
   <div id="toast"></div>
 
@@ -153,6 +139,7 @@
     <button class="btn" id="playBtn">▶ &nbsp;PLAY</button>
     <button class="btn ghost" id="howBtn">HOW TO PLAY</button>
     <button class="btn ghost" id="levelsBtn">LEVELS</button>
+    <button class="btn ghost" id="weaponsBtn">⚔️ WEAPONS</button>
     <button class="btn ghost" id="shopBtn">🛒 SHOP — UPGRADES</button>
     <button class="btn ghost" id="achBtn">🏆 ACHIEVEMENTS</button>
     <div class="muteNote" id="menuHigh">HIGH SCORE: 0 &nbsp;•&nbsp; 70 LEVELS &nbsp;•&nbsp; 10 WEAPONS</div>
@@ -171,6 +158,7 @@
         <li>Enemies hide on trees and rooftops and <b>shoot back</b>. Each hit costs you 25 HP.</li>
         <li>Kill every enemy to clear the level. <b>70 levels</b>, faster and deadlier as you climb.</li>
         <li>Unlock weapons as you level up — or buy them early with coins. 🔥 Flame arrows burn, ❄️ Ice freezes, 💣 Bombs clear groups. 🧲 Seeking curves to the nearest enemy, 🔱 Shadow Piercer passes through a line of them — those two are earned by reaching Level 45 / 70, never for sale.</li>
+        <li>Pick your weapon on the <b>WEAPONS</b> page from the main menu — it stays equipped until you are killed. Change it from the Game Over screen.</li>
         <li>Your progress, coins and weapons save automatically on this device.</li>
         <li><b>Wind</b> bends your arrows — watch the WIND meter. <b>Bosses</b> appear every 10 levels. Spend coins in the <b>Shop</b> on health, speed and blast upgrades, and chase achievements.</li>
         <li>From Level 11, a <b>heart ❤️ or shield 🛡️</b> sometimes falls from the sky — shoot it to collect it. Hearts heal +25 HP, shields block one hit.</li>
@@ -210,6 +198,17 @@
     </div>
   </div>
 
+  <!-- Weapons -->
+  <div class="screen hidden" id="weaponsScreen" style="background:rgba(4,6,12,.88)">
+    <div class="panel">
+      <h2>⚔️ CHOOSE YOUR WEAPON</h2>
+      <p style="text-align:center">Your coins: <b id="weaponsCoins" style="color:#ffe600">0 🪙</b></p>
+      <p style="text-align:center;font-size:13px;color:#9aa3b2">Your weapon stays equipped until you are killed. Tap a weapon to select it.</p>
+      <div id="weaponsList"></div>
+      <button class="btn" id="weaponsBackBtn">BACK</button>
+    </div>
+  </div>
+
   <!-- Pause -->
   <div class="screen hidden" id="pauseScreen">
     <div class="panel" style="max-width:340px">
@@ -244,6 +243,7 @@
       <div class="bigScore" id="overScore">0</div>
       <div class="statRow"><span>High score</span><b id="overHigh">0</b></div>
       <button class="btn" id="retryBtn">↻ RETRY LEVEL</button>
+      <button class="btn ghost" id="overWeaponBtn">⚔️ CHANGE WEAPON</button>
       <button class="btn ghost" id="overMenuBtn">🏠 MAIN MENU</button>
     </div>
   </div>
@@ -284,7 +284,7 @@ function arrowKindForWeapon(wid){
 
 
 /* ---------------- Save ---------------- */
-var save = { level:1, coins:0, weapons:['starter'], highScore:0, muted:false,
+var save = { level:1, coins:0, weapons:['starter'], selectedWeapon:'starter', highScore:0, muted:false,
   upgrades:{hp:0,speed:0,blast:0}, achievements:[],
   stats:{kills:0,headshots:0,bosses:0,bestCombo:0,levelsCleared:0} };
 function loadSave(){
@@ -293,6 +293,7 @@ function loadSave(){
     if (raw) { var d = JSON.parse(raw); if (d && typeof d==='object') save = Object.assign(save, d); }
   } catch(e){}
   if (!save.weapons || !save.weapons.length) save.weapons = ['starter'];
+  if (!save.selectedWeapon) save.selectedWeapon = 'starter';
   if (!save.upgrades) save.upgrades = {hp:0,speed:0,blast:0};
   if (!save.achievements) save.achievements = [];
   if (!save.stats) save.stats = {kills:0,headshots:0,bosses:0,bestCombo:0,levelsCleared:0};
@@ -1188,7 +1189,6 @@ function fireWeapon(){
     G.bombs.push({ x:b.x, y:b.y, vx:Math.cos(G.player.aimAngle)*sp, vy:Math.sin(G.player.aimAngle)*sp });
     G.releaseT = 0.34; // throw follow-through (hand swings forward)
     AudioEng.shoot();
-    renderWeaponBar();
     return;
   }
   var angles = [0];
@@ -1358,6 +1358,10 @@ function loop(ts){
   var dt = rawDt * G.timeScale;
   if (G.state === 'playing'){
     if (G.bombCd > 0) G.bombCd = Math.max(0, G.bombCd - rawDt);
+    if (G.weaponId === 'bomb'){
+      var cdNow = G.bombCd > 0 ? Math.ceil(G.bombCd) : 0;
+      if (cdNow !== G._cdShown){ G._cdShown = cdNow; updateWeaponNameHUD(); }
+    }
     if (G.releaseT > 0) G.releaseT = Math.max(0, G.releaseT - rawDt);
     if (G.windTimer > 0){ G.windTimer -= rawDt; if (G.windTimer <= 0) setWind(); }
     if (G.comboTimer > 0){ G.comboTimer -= rawDt; if (G.comboTimer <= 0){ G.combo = 0; updateComboHUD(); } }
@@ -1625,8 +1629,8 @@ function startLevel(n){
   // score and coins persist across levels; snapshots are taken below for retry
   G.hpMax = hpMax();
   G.hp = G.hpMax;
-  G.weaponId = save.weapons.indexOf(G.weaponId) === -1 ? 'starter' : G.weaponId;
-  G.bombCd = 0;
+  G.weaponId = selectedWeapon();
+  G.bombCd = 0; G._cdShown = -1;
   G.enemies = []; G.arrows = []; G.eArrows = []; G.bombs = [];
   G.particles = []; G.floaters = [];
   G.spawnQueue = levelEnemyTotal(G.level);
@@ -1655,8 +1659,7 @@ function startLevel(n){
   grantLevelWeapons();
   hideScreens();
   document.getElementById('hud').style.display = 'flex';
-  document.getElementById('weaponBar').style.display = 'flex';
-  updateHUD(); renderWeaponBar();
+  updateHUD();
   if (G.level <= 2) toast(G.level === 1 ? 'LEVEL 1 — Tutorial: learn to shoot!' : 'LEVEL 2 — Tutorial: enemies shoot back now, slowly!');
 }
 function levelComplete(){
@@ -1712,12 +1715,16 @@ function toMenu(){
   document.getElementById('menuHigh').textContent = 'HIGH SCORE: ' + save.highScore + '  •  70 LEVELS  •  10 WEAPONS  •  BOSSES + SHOP';
   hideScreens();
   document.getElementById('hud').style.display = 'none';
-  document.getElementById('weaponBar').style.display = 'none';
   showScreen('menuScreen');
 }
 
 /* ---------------- HUD & weapon bar ---------------- */
 function $(id){ return document.getElementById(id); }
+function updateWeaponNameHUD(){
+  var wName = weaponById(G.weaponId).short;
+  if (G.weaponId === 'bomb' && G.bombCd > 0) wName = 'BOMB ' + Math.ceil(G.bombCd) + 's';
+  $('weaponName').textContent = wName;
+}
 function updateHUD(){
   $('hudLevel').textContent = G.level;
   $('hudScore').textContent = G.score;
@@ -1726,7 +1733,7 @@ function updateHUD(){
   var hearts = frac > 0.66 ? '❤️❤️❤️' : (frac > 0.33 ? '❤️❤️🖤' : (G.hp > 0 ? '❤️🖤🖤' : '🖤🖤🖤'));
   $('hearts').textContent = hearts;
   $('hpBar').style.width = Math.max(0, Math.round(frac * 100)) + '%';
-  $('weaponName').textContent = weaponById(G.weaponId).short;
+  updateWeaponNameHUD();
   var sh = $('shieldIco');
   if (sh) sh.style.display = G.shield ? '' : 'none';
   var bb = $('bossBarWrap');
@@ -1738,48 +1745,64 @@ function updateHUD(){
   }
 }
 function weaponForSale(w){ return w.cost != null && w.cost > 0; }
-function renderWeaponBar(){
-  var bar = $('weaponBar');
-  bar.innerHTML = '';
-  WEAPONS.forEach(function(w){
-    var owned = save.weapons.indexOf(w.id) !== -1 || G.level >= w.unlock;
-    var b = document.createElement('div');
-    b.className = 'wBtn' + (owned ? '' : ' locked') + (G.weaponId === w.id ? ' sel' : '');
-    b.dataset.wid = w.id;
-    var forSale = weaponForSale(w);
-    var sub = owned ? w.desc : (forSale ? ('Unlocks at Lv ' + w.unlock + ' • 🪙' + w.cost) : ('Unlocks at Lv ' + w.unlock + ' • FREE — not for sale'));
-    b.innerHTML = '<span class="wIco">' + w.ico + '</span><span class="wName">' + w.name + '</span><span class="wSub">' + sub + '</span><span class="cd"></span>';
-    b.addEventListener('click', function(){
-      AudioEng.ensure();
-      if (owned){
-        G.weaponId = w.id; updateHUD(); renderWeaponBar();
-        toast(w.name + ' equipped');
-      } else if (forSale && G.coins >= w.cost){
-        G.coins -= w.cost; save.coins = G.coins;
-        save.weapons.push(w.id); storeSave();
-        G.weaponId = w.id; updateHUD(); renderWeaponBar();
-        toast('🔓 Unlocked ' + w.name + ' early with coins!');
-      } else if (forSale){
-        toast('Need ' + (w.cost - G.coins) + ' more coins — or reach Level ' + w.unlock);
-      } else {
-        toast(w.name + ' cannot be bought — reach Level ' + w.unlock + ' to unlock it free!');
-      }
-    });
-    bar.appendChild(b);
-  });
-  // keep save.coins in sync with run coins
-  save.coins = G.coins;
+/* ---------------- Weapon selection page ---------------- */
+var weaponsReturn = 'menuScreen'; // screen the weapons page returns to
+function weaponOwned(id){
+  var w = weaponById(id);
+  return save.weapons.indexOf(id) !== -1 || save.level >= w.unlock;
 }
-setInterval(function(){
-  if (G.state === 'playing' && G.weaponId === 'bomb'){
-    var btn = document.querySelector('.wBtn[data-wid="bomb"]');
-    if (btn){
-      var cd = btn.querySelector('.cd');
-      if (G.bombCd > 0){ btn.classList.add('cooling'); cd.textContent = Math.ceil(G.bombCd); }
-      else btn.classList.remove('cooling');
-    }
-  }
-}, 200);
+function selectedWeapon(){
+  var id = save.selectedWeapon;
+  if (!id) return 'starter';
+  for (var i=0;i<WEAPONS.length;i++) if (WEAPONS[i].id === id && weaponOwned(id)) return id;
+  return 'starter';
+}
+function selectWeapon(id){
+  if (!weaponOwned(id)) return false;
+  save.selectedWeapon = id;
+  G.weaponId = id;
+  storeSave();
+  updateHUD();
+  return true;
+}
+function buyWeapon(id){
+  var w = weaponById(id);
+  if (weaponOwned(id)) return false;
+  if (!weaponForSale(w)) return false;
+  if (G.coins < w.cost) return false;
+  G.coins -= w.cost; save.coins = G.coins;
+  save.weapons.push(id);
+  storeSave();
+  return true;
+}
+function renderWeapons(){
+  $('weaponsCoins').textContent = G.coins + ' 🪙';
+  var sel = selectedWeapon();
+  var ordered = [];
+  for (var i=0;i<WEAPONS.length;i++) if (WEAPONS[i].id === sel) ordered.push(WEAPONS[i]);
+  for (var j=0;j<WEAPONS.length;j++) if (WEAPONS[j].id !== sel) ordered.push(WEAPONS[j]);
+  var html = '';
+  ordered.forEach(function(w){
+    var owned = weaponOwned(w.id);
+    var isSel = w.id === sel;
+    var rec = isSel ? ' <span class="recTag">★ RECOMMENDED</span>' : '';
+    var sub = owned ? w.desc : (w.desc + ' — Unlocks at Lv ' + w.unlock + (weaponForSale(w) ? '' : ' • FREE — not for sale'));
+    var btn;
+    if (isSel) btn = '<button class="btn small" disabled>EQUIPPED ✓</button>';
+    else if (owned) btn = '<button class="btn small" data-act="select" data-wid="' + w.id + '">SELECT</button>';
+    else if (weaponForSale(w)) btn = '<button class="btn small" data-act="buy" data-wid="' + w.id + '"' + (G.coins < w.cost ? ' disabled' : '') + '>BUY 🪙' + w.cost + '</button>';
+    else btn = '<button class="btn small" disabled>🔒 Lv ' + w.unlock + '</button>';
+    html += '<div class="shopRow wRow' + (isSel ? ' sel' : '') + (owned ? '' : ' locked') + '"><div><b>' + w.ico + ' ' + w.name + rec + '</b><span>' + sub + '</span></div>' + btn + '</div>';
+  });
+  $('weaponsList').innerHTML = html;
+}
+function openWeapons(from){
+  weaponsReturn = from || 'menuScreen';
+  renderWeapons();
+  showScreen('weaponsScreen');
+}
+function closeWeapons(){ showScreen(weaponsReturn); }
+function getWeaponsReturn(){ return weaponsReturn; }
 
 /* ---------------- Shop & achievements ---------------- */
 var UPGRADES = [
@@ -1819,12 +1842,15 @@ function renderAchievements(){
 }
 
 /* ---------------- Screens & buttons ---------------- */
+var currentScreen = 'menuScreen';
 function showScreen(id){
+  currentScreen = id;
   if (id === 'menuScreen') menuMusicTryPlay();
   var all = document.querySelectorAll('.screen');
   for (var i=0;i<all.length;i++) all[i].classList.add('hidden');
   $(id).classList.remove('hidden');
 }
+function getCurrentScreen(){ return currentScreen; }
 function hideScreens(){
   var all = document.querySelectorAll('.screen');
   for (var i=0;i<all.length;i++) all[i].classList.add('hidden');
@@ -1853,12 +1879,34 @@ $('playBtn').addEventListener('click', function(){ AudioEng.ensure(); AudioEng.s
 $('howBtn').addEventListener('click', function(){ showScreen('howScreen'); });
 $('howBackBtn').addEventListener('click', function(){ showScreen('menuScreen'); });
 $('levelsBtn').addEventListener('click', function(){ renderLevels(); showScreen('levelsScreen'); });
+$('weaponsBtn').addEventListener('click', function(){ openWeapons('menuScreen'); });
 $('shopBtn').addEventListener('click', function(){ renderShop(); showScreen('shopScreen'); });
 $('shopBackBtn').addEventListener('click', function(){ if (G.state === 'complete') showScreen('completeScreen'); else showScreen('menuScreen'); });
 $('completeShopBtn').addEventListener('click', function(){ renderShop(); showScreen('shopScreen'); });
 $('achBtn').addEventListener('click', function(){ renderAchievements(); showScreen('achScreen'); });
 $('achBackBtn').addEventListener('click', function(){ showScreen('menuScreen'); });
 $('levelsBackBtn').addEventListener('click', function(){ showScreen('menuScreen'); });
+$('weaponsBackBtn').addEventListener('click', closeWeapons);
+$('weaponsList').addEventListener('click', function(ev){
+  var t = ev.target;
+  if (!t || !t.getAttribute) return;
+  var wid = t.getAttribute('data-wid');
+  var act = t.getAttribute('data-act');
+  if (!wid || !act) return;
+  AudioEng.ensure();
+  if (act === 'select'){
+    if (selectWeapon(wid)){ toast(weaponById(wid).name + ' equipped'); renderWeapons(); }
+  } else if (act === 'buy'){
+    var w = weaponById(wid);
+    if (G.coins >= w.cost){
+      buyWeapon(wid); selectWeapon(wid);
+      toast('🔓 Unlocked ' + w.name + ' early with coins!');
+      renderWeapons();
+    } else {
+      toast('Need ' + (w.cost - G.coins) + ' more coins — or reach Level ' + w.unlock);
+    }
+  }
+});
 function pauseGame(){ if (G.state === 'playing'){ G.state = 'paused'; showScreen('pauseScreen'); } }
 function resumeGame(){ if (G.state === 'paused'){ G.state = 'playing'; hideScreens(); } }
 $('pauseBtn').addEventListener('click', pauseGame);
@@ -1869,6 +1917,7 @@ $('replayBtn').addEventListener('click', function(){ G.score = G.snapScore; G.co
 $('completeMenuBtn').addEventListener('click', toMenu);
 $('retryBtn').addEventListener('click', function(){ G.score = G.snapScore; G.coins = G.snapCoins; startLevel(G.level); });
 $('overMenuBtn').addEventListener('click', toMenu);
+$('overWeaponBtn').addEventListener('click', function(){ openWeapons('overScreen'); });
 $('muteBtn').addEventListener('click', function(){
   AudioEng.ensure();
   AudioEng.setMuted(!AudioEng.muted);
@@ -1897,9 +1946,7 @@ spawnEnemy(); spawnEnemy(); // decorative shadows behind the menu
 syncMuteIcons();
 $('menuHigh').textContent = 'HIGH SCORE: ' + save.highScore + '  •  70 LEVELS  •  10 WEAPONS  •  BOSSES + SHOP';
 $('hud').style.display = 'none';
-$('weaponBar').style.display = 'none';
 updateHUD();
-renderWeaponBar();
 requestAnimationFrame(loop);
 
 // Debug/test hook (harmless in normal play)
@@ -1917,7 +1964,10 @@ window.__SA = { G:G, WEAPONS:WEAPONS, save:save, startLevel:startLevel, fireWeap
   trajectoryShown:trajectoryShown, weaponForSale:weaponForSale,
   arrowKindForWeapon:arrowKindForWeapon, steerSeeking:steerSeeking,
   spawnForAngle:spawnForAngle, archerGeom:archerGeom, enemyHitTest:enemyHitTest,
-  renderWeaponBar:renderWeaponBar, enemyDrawState:enemyDrawState };
+  renderWeapons:renderWeapons, selectWeapon:selectWeapon, buyWeapon:buyWeapon, weaponOwned:weaponOwned,
+  selectedWeapon:selectedWeapon, openWeapons:openWeapons, closeWeapons:closeWeapons,
+  getWeaponsReturn:getWeaponsReturn, getCurrentScreen:getCurrentScreen,
+  updateWeaponNameHUD:updateWeaponNameHUD, gameOver:gameOver, enemyDrawState:enemyDrawState };
 </script>
 </body>
 </html>
