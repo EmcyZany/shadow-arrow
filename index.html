@@ -454,12 +454,17 @@ var AudioEng = {
 /* ---------------- Homepage (menu) music ----------------
    The menu song loops on the homepage only. It starts on the player's
    first tap (browsers block audio before any gesture) and stops the
-   moment a level starts, when the in-game pad takes over. */
+   moment a level starts, when the in-game pad takes over. It plays only
+   while the game state is 'menu'; on Game Over ('over') or Level
+   Complete ('complete') it stays off and the in-game pad keeps playing. */
 var menuMusicEl = document.getElementById('menuMusic');
 var menuMusicAllowed = false; // becomes true on the first user gesture
 function menuMusicTryPlay(){
   if (!menuMusicEl || AudioEng.muted || !menuMusicAllowed) return;
-  if (G.state === 'playing' || G.state === 'paused') return;
+  // The menu song plays ONLY while exploring the main menu (state 'menu').
+  // On Game Over ('over') or Level Complete ('complete') a tap must NOT
+  // restart it — the in-game pad keeps playing there instead.
+  if (G.state !== 'menu') return;
   AudioEng.stopMusic(); // don't let the quiet in-game pad double up with the song
   menuMusicEl.volume = 0.5;
   var p = menuMusicEl.play();
@@ -529,7 +534,7 @@ var G = {
   weaponId:'starter', bombCd:0,
   player:null, enemies:[], arrows:[], eArrows:[], bombs:[],
   particles:[], floaters:[], perches:[], stars:[],
-  spawnQueue:0, spawnTimer:0, spawnInterval:1.4,
+  spawnQueue:0, spawnTimer:0, spawnInterval:1.4, groundSpawned:false,
   time:0, timeScale:1, slowmo:0, shake:0, flash:0,
   aiming:false, aimPower:0, aimDir:{x:1,y:-0.4}, lastShot:0, releaseT:0,
   tutStep:0, tutTimer:0, levelCoins:0, snapScore:0, snapCoins:0,
@@ -636,6 +641,13 @@ function makePerches(){
     y = H*(0.34 + Math.random()*0.28);
     G.perches.push({ kind:'tree', x:x, y:y, w:0, h:0 });
   }
+  // Ground: standing on the ground line like the look test — same level as
+  // the player, facing the player, not floating. Spread across the width.
+  var nGround = 3;
+  for (i=0;i<nGround;i++){
+    x = W*(0.30 + (i/(nGround-1)) * 0.60) + (Math.random()*30-15);
+    G.perches.push({ kind:'ground', x:x, y:groundY, w:0, h:0 });
+  }
 }
 function freePerch(){
   var free = G.perches.filter(function(p){ return !p.taken; });
@@ -648,13 +660,22 @@ function makePlayer(){
   return { x:W*0.14, y:groundY, w:34*S, h:74*S, hp:100, aimAngle:-0.6 };
 }
 function spawnEnemy(){
-  var p = freePerch(); if (!p) return false;
+  // Guarantee at least one ground-level enemy per level (like the look test:
+  // standing on the ground line, facing the player, not floating).
+  var p = null;
+  if (!G.groundSpawned){
+    var grounds = G.perches.filter(function(q){ return q.kind === 'ground' && !q.taken; });
+    if (grounds.length){ p = grounds[Math.floor(Math.random()*grounds.length)]; G.groundSpawned = true; }
+  }
+  if (!p) p = freePerch();
+  if (!p) return false;
   p.taken = true;
   var moveMode = 'static';
   if (G.level >= 3){
     var mr = Math.random();
     if (mr < 0.22) moveMode = 'walk';
-    else if (mr < 0.42) moveMode = 'swing';
+    // ground enemies never swing — swinging would lift their feet off the ground
+    else if (mr < 0.42 && p.kind !== 'ground') moveMode = 'swing';
   }
   var shielded = G.level >= 6 && Math.random() < 0.2;
   var e = {
@@ -674,7 +695,10 @@ function spawnEnemy(){
   return true;
 }
 function spawnBoss(){
-  var p = freePerch(); if (!p) return false;
+  // Bosses stay on an elevated platform (roof/tree) — never on the ground.
+  var free = G.perches.filter(function(q){ return !q.taken && q.kind !== 'ground'; });
+  if (!free.length) return false;
+  var p = free[Math.floor(Math.random()*free.length)];
   p.taken = true;
   var hp = 8 + Math.floor(G.level / 2);
   var e = {
@@ -880,7 +904,7 @@ function drawPerch(p){
       ctx.beginPath(); ctx.moveTo(p.x + p.w*0.3, p.y); ctx.lineTo(p.x + p.w*0.3, p.y - 34*S); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(p.x + p.w*0.3 - 7, p.y - 30*S); ctx.lineTo(p.x + p.w*0.3 + 7, p.y - 30*S); ctx.stroke();
     }
-  } else {
+  } else if (p.kind === 'tree'){
     // tree trunk + branches
     ctx.strokeStyle = '#05080f'; ctx.lineWidth = 7*S; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(p.x, groundY); ctx.lineTo(p.x + 4*S, p.y + 30*S); ctx.stroke();
@@ -896,6 +920,7 @@ function drawPerch(p){
     ctx.beginPath(); ctx.arc(p.x + 28*S, p.y - 22*S, 24*S, 0, 6.283); ctx.fill();
     ctx.beginPath(); ctx.arc(p.x, p.y - 34*S, 22*S, 0, 6.283); ctx.fill();
   }
+  // 'ground' perches draw nothing — the enemy stands on the ground line itself.
 }
 
 /* ---------------- Drawing: characters ---------------- */
@@ -1780,6 +1805,7 @@ function startLevel(n){
   G.spawnQueue = levelEnemyTotal(G.level);
   if (G.level % 10 === 0) G.spawnQueue = Math.max(0, G.spawnQueue - 2); // boss replaces 2 normal enemies
   G.spawnTimer = 0.7;
+  G.groundSpawned = false; // the first spawn of each level is a ground enemy
   // rare pickup: ~1 in 3 levels after level 10, one per level, heart or shield
   G.pickup = null; G.pickupKind = null; G.pickupTimer = 0;
   if (G.level > 10 && Math.random() < 1/3){
@@ -2113,7 +2139,7 @@ window.__SA = { G:G, WEAPONS:WEAPONS, save:save, startLevel:startLevel, fireWeap
   renderWeapons:renderWeapons, selectWeapon:selectWeapon, buyWeapon:buyWeapon, weaponOwned:weaponOwned,
   selectedWeapon:selectedWeapon, openWeapons:openWeapons, closeWeapons:closeWeapons,
   getWeaponsReturn:getWeaponsReturn, getCurrentScreen:getCurrentScreen,
-  updateWeaponNameHUD:updateWeaponNameHUD, gameOver:gameOver, enemyDrawState:enemyDrawState,
+  updateWeaponNameHUD:updateWeaponNameHUD, gameOver:gameOver, toMenu:toMenu, enemyDrawState:enemyDrawState,
   resize:resize, isLandscape:isLandscape, getW:function(){ return W; }, getH:function(){ return H; } };
 </script>
 </body>

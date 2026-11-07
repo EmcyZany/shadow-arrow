@@ -2,17 +2,20 @@
 
 A 2D silhouette archery game for mobile and desktop. You are the last Shadow
 Archer. Dark shadow enemies have taken over the forest and hide on trees and
-rooftops. Kill them all and survive 70 levels.
+rooftops — and some stand on the ground right in front of you, facing you
+down. Kill them all and survive 70 levels.
 
 ## Play it
 
 - Live: https://shadow-arrow-lovat.vercel.app
 - Or open `index.html` in any browser — the whole game is one self-contained
   file (HTML, CSS, JavaScript, Canvas). No build step, no server needed.
-- Menu music: the homepage loops `menu-music.mp3` (a 26-second song). The
-  file is hosted with the live deployment; place a copy next to `index.html`
-  to hear it when opening the file directly. Without it the game still plays,
-  just with no menu song.
+- Menu music: the homepage loops `menu-music.mp3` (a 26-second song) — but
+  only on the main menu. The moment a level starts, the menu song stops and
+  the in-game song (Web Audio) plays alone, and it keeps playing on the Game
+  Over screen too. The file is hosted with the live deployment; place a copy
+  next to `index.html` to hear it when opening the file directly. Without it
+  the game still plays, just with no menu song.
 
 ## How to play
 
@@ -20,6 +23,10 @@ rooftops. Kill them all and survive 70 levels.
 - The archer and the enemies are pure-black vector shadow humans — the draw hand grips the red nock of the arrow and pulls it back to the cheek, then snaps forward on release. Enemies draw the same way before they fire.
 - **Headshot = instant kill** (+100). Body hits hurt: 2 hits to kill (+50).
 - Enemies shoot back. Each hit costs 25 HP. 0 HP = game over.
+- **Ground enemies:** some enemies stand on the ground line right in front
+  of you, on the same level as you and facing you — like a duel — in addition
+  to the ones up on rooftops and trees. They shoot at you from ground level
+  with the same telegraph and ballistic aim. Bosses stay on their platform.
 - **Wind** bends your arrows — watch the WIND meter. **Bosses** appear every
   10 levels. Rainy levels, moving targets, shielded enemies, and headshot
   combos keep the later levels dangerous.
