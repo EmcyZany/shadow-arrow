@@ -18,6 +18,12 @@
   .xLogo { width:20px; height:20px; vertical-align:-4px; }
   .menuMute { position:absolute; top:14px; right:14px; z-index:11; }
 
+  /* rotate hint on the menu: hidden by default, shown only on portrait phones */
+  .rotateHint { display:none; }
+  @media (max-width: 560px) and (orientation: portrait){
+    .rotateHint { display:block; font-size:11px; color:#9aa3b2; text-align:center; margin-top:6px; text-shadow:0 1px 4px rgba(0,0,0,.8); }
+  }
+
   /* desktop portrait: keep the game in a centered portrait column instead of stretching it */
   @media (min-width: 560px) and (orientation: portrait){
     #gameWrap { left:50%; right:auto; transform:translateX(-50%); width:min(480px, 100vw); box-shadow:0 0 80px rgba(0,0,0,.9); }
@@ -220,6 +226,7 @@
     </div>
     <div class="muteNote" id="menuHigh">HIGH SCORE: 0 &nbsp;•&nbsp; 70 LEVELS &nbsp;•&nbsp; 10 WEAPONS</div>
     <div class="credit">This game was made by Samuel • Follow the dev on <a href="https://x.com/Samuelcheq1" target="_blank" rel="noopener" aria-label="Samuel on X"><svg class="xLogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></a></div>
+    <div class="rotateHint" id="rotateHint">🔄 Rotate your phone for a wider view</div>
     <button class="iconBtn menuMute" id="menuMuteBtn" title="Mute music">🔊</button>
   </div>
 
