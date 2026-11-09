@@ -673,10 +673,12 @@ function makePerches(){
     G.perches.push({ kind:'tree', x:x, y:y, w:0, h:0 });
   }
   // Ground: standing on the ground line like the look test — same level as
-  // the player, facing the player, not floating. Spread across the width.
+  // the player, facing the player, not floating. Spread across the right
+  // half of the screen (50/70/90%) so the nearest one is never right next
+  // to the player at 14%.
   var nGround = 3;
   for (i=0;i<nGround;i++){
-    x = W*(0.30 + (i/(nGround-1)) * 0.60) + (Math.random()*30-15);
+    x = W*(0.50 + (i/(nGround-1)) * 0.40) + (Math.random()*30-15);
     G.perches.push({ kind:'ground', x:x, y:groundY, w:0, h:0 });
   }
 }
