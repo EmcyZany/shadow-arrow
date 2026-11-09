@@ -565,10 +565,14 @@ var G = {
 };
 
 function levelEnemyTotal(l){ return Math.min(3 + (l - 1) * 2, 24); }
+// How long each enemy waits between shots. Level 1 never shoots (tutorial).
+// Level 2 = 5.0s, then 0.2s faster per level, reaching the 1.0s floor at
+// level 22 and staying there through level 70 (L3 4.8s, L5 4.4s, L10 3.4s,
+// L20 1.4s). Gentler start than the old 2.0 - l*0.02 curve, which dropped
+// from 3.0s at L2 to 1.94s at L3 in a single level.
 function enemyDelay(l){
   if (l === 1) return Infinity;
-  if (l === 2) return 3.0;
-  return Math.max(0.5, 2.0 - (l * 0.02));
+  return Math.max(1.0, 5.0 - ((l - 2) * 0.2));
 }
 // How often NEW enemies spawn (seconds between spawn groups). Slow at first,
 // faster as levels advance; never faster than 0.1s (levels 51-70 stay at
