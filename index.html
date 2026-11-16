@@ -560,7 +560,7 @@ var G = {
   tutStep:0, tutTimer:0, levelCoins:0, snapScore:0, snapCoins:0,
   mistX:0, moonPulse:0, hpMax:100,
   wind:0, windTimer:0, combo:0, comboTimer:0, boss:null,
-  rain:[], fireflies:[], clouds:[], lightning:0, lightningTimer:14, raining:false,
+  rain:[], snow:[], fireflies:[], clouds:[], lightning:0, lightningTimer:14, raining:false, theme:'night',
   pickup:null, pickupKind:null, pickupTimer:0, shield:false
 };
 
@@ -647,6 +647,8 @@ function makeAmbience(){
   for (var j=0;j<22;j++) G.fireflies.push({ x:Math.random()*W, y:H*(0.55 + Math.random()*0.35), phase:Math.random()*6.28, drift:Math.random()*6.28 });
   G.rain = [];
   for (var k=0;k<70;k++) G.rain.push({ x:Math.random()*W, y:Math.random()*H, speed:(500 + Math.random()*300)*S });
+  G.snow = [];
+  for (var s=0;s<70;s++) G.snow.push({ x:Math.random()*W, y:Math.random()*H, speed:(30 + Math.random()*50)*S, r:(1.5 + Math.random()*2.5)*S, phase:Math.random()*6.28 });
 }
 
 /* ---------------- World generation ---------------- */
@@ -843,37 +845,68 @@ function floater(x, y, text, color, size){
 }
 
 /* ---------------- Drawing: background ---------------- */
+// Per-level backgrounds (confirmed 2026-11-09): four themes changing every
+// 10 levels. Night is the only weather-varying theme: levels 41-50 are rainy.
+function themeForLevel(l){
+  if (l <= 10) return { name:'night', rainy:false };
+  if (l <= 20) return { name:'snow', rainy:false };
+  if (l <= 30) return { name:'daylight', rainy:false };
+  if (l <= 40) return { name:'sunset', rainy:false };
+  if (l <= 50) return { name:'night', rainy:true };
+  if (l <= 60) return { name:'snow', rainy:false };
+  return { name:'daylight', rainy:false };
+}
+// Sky/ground palette per theme. Silhouettes (player, enemies, perches) stay
+// dark on every theme, so the same figures read on bright and dark skies.
+var THEMES = {
+  night:    { sky:['#05070f','#0d1526','#1c2a44','#3a2418'], stars:true,  moon:true,  sun:null,     cloud:'rgba(8,12,22,0.6)',   skyline:'#0a0f1c', ground:'#04060a', groundTop:'#0c1220', mist:'rgba(180,200,230,', fireflies:true,  grass:'#03050a' },
+  snow:     { sky:['#a9bfd2','#c6d8e6','#e2edf3','#f2f7fa'], stars:false, moon:false, sun:'#f4f8ff', cloud:'rgba(255,255,255,0.9)', skyline:'#93a8bb', ground:'#dfe9ef', groundTop:'#ffffff', mist:null,               fireflies:false, grass:'#ffffff' },
+  daylight: { sky:['#2f7fc9','#5ea9e0','#9fd2ef','#d6edfb'], stars:false, moon:false, sun:'#fff3b0', cloud:'rgba(255,255,255,0.9)', skyline:'#5d7f9e', ground:'#152417', groundTop:'#2c4a2e', mist:null,               fireflies:false, grass:'#0a140c' },
+  sunset:   { sky:['#2b1a4a','#7a2d5e','#e2603f','#ffb347'], stars:false, moon:false, sun:'#ff7a2e', cloud:'rgba(50,16,40,0.55)',  skyline:'#241433', ground:'#120a14', groundTop:'#3a1f2e', mist:'rgba(255,170,120,', fireflies:false, grass:'#0d0710' }
+};
 function drawBackground(){
-  // night sky
+  var th = THEMES[G.theme] || THEMES.night;
+  // sky
   var sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, '#05070f'); sky.addColorStop(0.45, '#0d1526');
-  sky.addColorStop(0.75, '#1c2a44'); sky.addColorStop(1, '#3a2418');
+  sky.addColorStop(0, th.sky[0]); sky.addColorStop(0.45, th.sky[1]);
+  sky.addColorStop(0.75, th.sky[2]); sky.addColorStop(1, th.sky[3]);
   ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
-  // stars
-  for (var i=0;i<G.stars.length;i++){
-    var st = G.stars[i], a = 0.35 + 0.4 * Math.abs(Math.sin(G.time*0.7 + st.tw));
-    ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(2) + ')';
-    ctx.fillRect(st.x*W, st.y*H, st.r, st.r);
+  // stars (night only)
+  if (th.stars){
+    for (var i=0;i<G.stars.length;i++){
+      var st = G.stars[i], a = 0.35 + 0.4 * Math.abs(Math.sin(G.time*0.7 + st.tw));
+      ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(2) + ')';
+      ctx.fillRect(st.x*W, st.y*H, st.r, st.r);
+    }
   }
   // drifting clouds
   for (var c=0;c<G.clouds.length;c++){
     var cl = G.clouds[c];
-    ctx.fillStyle = 'rgba(8,12,22,0.6)';
+    ctx.fillStyle = th.cloud;
     ctx.beginPath(); ctx.ellipse(cl.x, cl.y, cl.w/2, cl.h, 0, 0, 6.283); ctx.fill();
     ctx.beginPath(); ctx.ellipse(cl.x + cl.w*0.25, cl.y + 6*S, cl.w/3, cl.h*0.8, 0, 0, 6.283); ctx.fill();
   }
-  // big moon
-  var mx = W*0.78, my = H*0.16, mr = 52*S;
-  var glow = ctx.createRadialGradient(mx, my, mr*0.4, mx, my, mr*3.2);
-  glow.addColorStop(0, 'rgba(255,244,200,0.35)'); glow.addColorStop(1, 'rgba(255,244,200,0)');
-  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(mx, my, mr*3.2, 0, 6.283); ctx.fill();
-  ctx.fillStyle = '#f7ecd0'; ctx.beginPath(); ctx.arc(mx, my, mr, 0, 6.283); ctx.fill();
-  ctx.fillStyle = 'rgba(190,175,140,0.5)';
-  ctx.beginPath(); ctx.arc(mx-mr*0.3, my-mr*0.2, mr*0.16, 0, 6.283); ctx.fill();
-  ctx.beginPath(); ctx.arc(mx+mr*0.25, my+mr*0.3, mr*0.11, 0, 6.283); ctx.fill();
-  ctx.beginPath(); ctx.arc(mx+mr*0.1, my-mr*0.4, mr*0.08, 0, 6.283); ctx.fill();
+  // big moon (night) or sun (snow / daylight / sunset)
+  if (th.moon){
+    var mx = W*0.78, my = H*0.16, mr = 52*S;
+    var glow = ctx.createRadialGradient(mx, my, mr*0.4, mx, my, mr*3.2);
+    glow.addColorStop(0, 'rgba(255,244,200,0.35)'); glow.addColorStop(1, 'rgba(255,244,200,0)');
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(mx, my, mr*3.2, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#f7ecd0'; ctx.beginPath(); ctx.arc(mx, my, mr, 0, 6.283); ctx.fill();
+    ctx.fillStyle = 'rgba(190,175,140,0.5)';
+    ctx.beginPath(); ctx.arc(mx-mr*0.3, my-mr*0.2, mr*0.16, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(mx+mr*0.25, my+mr*0.3, mr*0.11, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(mx+mr*0.1, my-mr*0.4, mr*0.08, 0, 6.283); ctx.fill();
+  } else if (th.sun){
+    // the sunset sun sits low and large near the horizon; other suns ride high
+    var sx = W*0.78, sy = (G.theme === 'sunset') ? H*0.42 : H*0.16, sr = ((G.theme === 'sunset') ? 64 : 46)*S;
+    var sglow = ctx.createRadialGradient(sx, sy, sr*0.4, sx, sy, sr*3.2);
+    sglow.addColorStop(0, 'rgba(255,230,150,0.5)'); sglow.addColorStop(1, 'rgba(255,230,150,0)');
+    ctx.fillStyle = sglow; ctx.beginPath(); ctx.arc(sx, sy, sr*3.2, 0, 6.283); ctx.fill();
+    ctx.fillStyle = th.sun; ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 6.283); ctx.fill();
+  }
   // distant skyline silhouette
-  ctx.fillStyle = '#0a0f1c';
+  ctx.fillStyle = th.skyline;
   var bx = 0;
   while (bx < W){
     var bw = 26 + ((bx*7) % 46), bh = H*(0.10 + ((bx*13) % 90)/420);
@@ -881,32 +914,36 @@ function drawBackground(){
     if ((bx*3) % 5 === 0) ctx.fillRect(bx + bw*0.4, groundY - bh - 12*S, 3*S, 12*S);
     bx += bw + 6;
   }
-  // mist bands
-  G.mistX = (G.mistX + 0.12) % (W + 400);
-  for (var m=0;m<3;m++){
-    var myy = groundY - H*(0.10 + m*0.07);
-    var mg = ctx.createLinearGradient(0, myy, 0, myy + 34*S);
-    mg.addColorStop(0, 'rgba(180,200,230,0)'); mg.addColorStop(0.5, 'rgba(180,200,230,0.10)'); mg.addColorStop(1, 'rgba(180,200,230,0)');
-    ctx.fillStyle = mg;
-    var off = (G.mistX + m*260) % (W + 400) - 200;
-    ctx.fillRect(off, myy, W*0.55, 34*S);
+  // mist bands (night + sunset)
+  if (th.mist){
+    G.mistX = (G.mistX + 0.12) % (W + 400);
+    for (var m=0;m<3;m++){
+      var myy = groundY - H*(0.10 + m*0.07);
+      var mg = ctx.createLinearGradient(0, myy, 0, myy + 34*S);
+      mg.addColorStop(0, th.mist + '0)'); mg.addColorStop(0.5, th.mist + '0.10)'); mg.addColorStop(1, th.mist + '0)');
+      ctx.fillStyle = mg;
+      var off = (G.mistX + m*260) % (W + 400) - 200;
+      ctx.fillRect(off, myy, W*0.55, 34*S);
+    }
   }
   // perches: trees and rooftops
   for (var p=0;p<G.perches.length;p++) drawPerch(G.perches[p]);
   // ground
-  ctx.fillStyle = '#04060a';
+  ctx.fillStyle = th.ground;
   ctx.fillRect(0, groundY, W, H - groundY);
-  ctx.fillStyle = '#0c1220';
+  ctx.fillStyle = th.groundTop;
   ctx.fillRect(0, groundY, W, 3);
-  // fireflies drifting over the ground
-  for (var f=0;f<G.fireflies.length;f++){
-    var fl = G.fireflies[f];
-    var fa = 0.25 + 0.55 * Math.abs(Math.sin(G.time*1.6 + fl.phase));
-    var fx = fl.x + Math.sin(G.time*0.5 + fl.drift) * 12*S;
-    ctx.fillStyle = 'rgba(190,255,150,' + fa.toFixed(2) + ')';
-    ctx.beginPath(); ctx.arc(fx, fl.y + Math.cos(G.time*0.7 + fl.phase) * 6*S, 2.2*S, 0, 6.283); ctx.fill();
+  // fireflies drifting over the ground (night only)
+  if (th.fireflies){
+    for (var f=0;f<G.fireflies.length;f++){
+      var fl = G.fireflies[f];
+      var fa = 0.25 + 0.55 * Math.abs(Math.sin(G.time*1.6 + fl.phase));
+      var fx = fl.x + Math.sin(G.time*0.5 + fl.drift) * 12*S;
+      ctx.fillStyle = 'rgba(190,255,150,' + fa.toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(fx, fl.y + Math.cos(G.time*0.7 + fl.phase) * 6*S, 2.2*S, 0, 6.283); ctx.fill();
+    }
   }
-  // rain (on rainy levels)
+  // rain (rainy night levels only: 41-50)
   if (G.raining){
     ctx.strokeStyle = 'rgba(170,200,255,0.35)'; ctx.lineWidth = 1;
     for (var d=0;d<G.rain.length;d++){
@@ -914,11 +951,26 @@ function drawBackground(){
       ctx.beginPath(); ctx.moveTo(dr.x, dr.y); ctx.lineTo(dr.x - 3*S, dr.y + 14*S); ctx.stroke();
     }
   }
-  // foreground grass tufts (silhouette)
-  ctx.fillStyle = '#03050a';
-  for (var g=0; g<W; g+=26){
-    var gh = 5 + ((g*11) % 9);
-    ctx.beginPath(); ctx.moveTo(g, groundY+2); ctx.lineTo(g+4, groundY-gh); ctx.lineTo(g+8, groundY+2); ctx.fill();
+  // snowflakes (snow levels only)
+  if (G.theme === 'snow'){
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    for (var s=0;s<G.snow.length;s++){
+      var sf = G.snow[s];
+      ctx.beginPath(); ctx.arc(sf.x + Math.sin(G.time*0.8 + sf.phase)*8*S, sf.y, sf.r, 0, 6.283); ctx.fill();
+    }
+  }
+  // foreground grass tufts (silhouette) — soft snow drifts on snow levels
+  if (G.theme === 'snow'){
+    ctx.fillStyle = '#ffffff';
+    for (var g2=0; g2<W; g2+=52){
+      ctx.beginPath(); ctx.ellipse(g2+26, groundY+4, 26, 5, 0, 0, 6.283); ctx.fill();
+    }
+  } else {
+    ctx.fillStyle = th.grass;
+    for (var g=0; g<W; g+=26){
+      var gh = 5 + ((g*11) % 9);
+      ctx.beginPath(); ctx.moveTo(g, groundY+2); ctx.lineTo(g+4, groundY-gh); ctx.lineTo(g+8, groundY+2); ctx.fill();
+    }
   }
 }
 function drawPerch(p){
@@ -952,6 +1004,18 @@ function drawPerch(p){
     ctx.beginPath(); ctx.arc(p.x - 30*S, p.y - 16*S, 20*S, 0, 6.283); ctx.fill();
     ctx.beginPath(); ctx.arc(p.x + 28*S, p.y - 22*S, 24*S, 0, 6.283); ctx.fill();
     ctx.beginPath(); ctx.arc(p.x, p.y - 34*S, 22*S, 0, 6.283); ctx.fill();
+  }
+  // snow caps on snow levels
+  if (G.theme === 'snow'){
+    ctx.fillStyle = '#ffffff';
+    if (p.kind === 'roof'){
+      ctx.fillRect(p.x - p.w/2 - 4, p.y - 8, p.w + 8, 5);
+      if (p.tank) ctx.fillRect(p.x - p.w*0.28 - 2, p.y - 25*S, 24*S, 4);
+    } else if (p.kind === 'tree'){
+      ctx.beginPath(); ctx.arc(p.x - 30*S, p.y - 20*S, 20*S, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x + 28*S, p.y - 26*S, 24*S, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y - 38*S, 22*S, 0, 6.283); ctx.fill();
+    }
   }
   // 'ground' perches draw nothing — the enemy stands on the ground line itself.
 }
@@ -1592,7 +1656,15 @@ function loop(ts){
       if (rd.y > H){ rd.y = -16; rd.x = Math.random() * (W + 60); }
     }
   }
-  if (G.lightningTimer > 0){
+  if (G.theme === 'snow'){
+    for (var si=0;si<G.snow.length;si++){
+      var sf = G.snow[si];
+      sf.y += sf.speed * rawDt; sf.x += Math.sin(G.time*0.8 + sf.phase) * 12 * S * rawDt;
+      if (sf.y > H){ sf.y = -8; sf.x = Math.random() * W; }
+    }
+  }
+  // lightning only on rainy night levels (41-50)
+  if (G.raining && G.lightningTimer > 0){
     G.lightningTimer -= rawDt;
     if (G.lightningTimer <= 0){
       G.lightning = 0.16;
@@ -1848,7 +1920,9 @@ function startLevel(n){
   }
   G.combo = 0; G.comboTimer = 0; updateComboHUD();
   G.boss = null; G.lightning = 0; G.lightningTimer = 10 + Math.random()*10;
-  G.raining = (G.level % 4 === 0);
+  var th = themeForLevel(G.level); // per-level background: theme + rain
+  G.theme = th.name;
+  G.raining = th.rainy;
   G.slowmo = 0; G.timeScale = 1; G.shake = 0; G.flash = 0;
   G.aiming = false; G.aimPower = 0; G.releaseT = 0;
   G.tutStep = (G.level <= 2) ? 0 : 4;
@@ -2188,7 +2262,7 @@ updateHUD();
 requestAnimationFrame(loop);
 
 // Debug/test hook (harmless in normal play)
-window.__SA = { G:G, WEAPONS:WEAPONS, save:save, startLevel:startLevel, fireWeapon:fireWeapon, updateAim:updateAim,
+window.__SA = { G:G, WEAPONS:WEAPONS, save:save, startLevel:startLevel, themeForLevel:themeForLevel, fireWeapon:fireWeapon, updateAim:updateAim,
   damageEnemy:damageEnemy, killEnemy:killEnemy, levelEnemyTotal:levelEnemyTotal,
   enemyDelay:enemyDelay, spawnIntervalFor:spawnIntervalFor, updateHUD:updateHUD, spawnEnemy:spawnEnemy, AudioEng:AudioEng,
   spawnBoss:spawnBoss, setWind:setWind, unlockAch:unlockAch, renderShop:renderShop,
